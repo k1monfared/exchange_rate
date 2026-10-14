@@ -56,9 +56,10 @@ function averageLeg(cur, side) {
 }
 
 function directPair(from, to, sourceId, side) {
-  // a direct non-IRR pair published by the chosen source (globalfx USD/CAD)
+  // a direct non-IRR pair published by the chosen source (globalfx USD/CAD).
+  // globalfx stores `value` as USD per CAD (from-per-to), so the to-per-from rate is its reciprocal.
   const rec = records().find(r => r.source_id === sourceId && r.pair_from === from && r.pair_to === to)
-  if (rec && rec.pair_to !== "IRR") return rec.value
+  if (rec && rec.pair_to !== "IRR" && rec.value) return 1 / rec.value
   return null
 }
 
@@ -71,17 +72,17 @@ function rate(from, to, sourceId, side) {
     const gfxRec = records().find(x => x.source_id === "globalfx")
     const cadIrr = sideValue(cadRec, side)                 // IRR per CAD
     const usdIrr = averageLeg("USD", side)                 // IRR per USD (avg of enabled cash sources)
-    const gfx = gfxRec ? gfxRec.value : null               // USD per CAD
+    const gfx = gfxRec ? gfxRec.value : null               // USD per CAD (stored value)
     if (from === "CAD" && to === "IRR") return cadIrr
     if (from === "IRR" && to === "CAD") return cadIrr != null ? 1 / cadIrr : null
     if (from === "USD" && to === "IRR") return usdIrr
     if (from === "IRR" && to === "USD") return usdIrr != null ? 1 / usdIrr : null
     if (from === "USD" && to === "CAD") {
-      if (gfx != null) return gfx
+      if (gfx != null) return 1 / gfx
       return (cadIrr != null && usdIrr != null) ? usdIrr / cadIrr : null
     }
     if (from === "CAD" && to === "USD") {
-      if (gfx != null) return 1 / gfx
+      if (gfx != null) return gfx
       return (cadIrr != null && usdIrr != null) ? cadIrr / usdIrr : null
     }
     return null
@@ -139,7 +140,12 @@ function fillSelectors() {
 async function loadDate(date) {
   if (!date) { SNAPSHOT = null; return }
   if (!SNAPSHOTS[date]) {
-    SNAPSHOTS[date] = await getJson(`./data/snapshots/${date}.json`)
+    try {
+      SNAPSHOTS[date] = await getJson(`./data/snapshots/${date}.json`)
+    } catch (err) {
+      SNAPSHOT = null
+      throw err
+    }
   }
   SNAPSHOT = SNAPSHOTS[date]
 }
@@ -148,7 +154,7 @@ async function boot() {
   INDEX = await getJson("./data/index.json")
   fillSelectors()
   document.getElementById("calc-date").addEventListener("change", async e => {
-    await loadDate(e.target.value)
+    try { await loadDate(e.target.value) } catch (_) { SNAPSHOT = null }
     convert()
     renderTables()
   })
