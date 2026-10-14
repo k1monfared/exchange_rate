@@ -166,20 +166,80 @@ async function boot() {
   renderTables()
 }
 
+function badge(r) {
+  if (r.kind === "estimate") {
+    return `<span class="badge estimate" data-prov='${escapeAttr(JSON.stringify({ formula: r.formula || "", inputs: r.inputs || [] }))}'>estimate</span>`
+  }
+  if (r.kind === "proxy") {
+    return `<span class="badge proxy" title="USDT is used as a proxy for the cash US dollar">proxy</span>`
+  }
+  return `<span class="badge exact" title="Source publishes this pair directly">exact</span>`
+}
+
+function escapeAttr(s) { return s.replace(/'/g, "&#39;") }
+
+function showProvenance(data) {
+  const c = document.getElementById("modal-content")
+  const rows = (data.inputs || []).map(i =>
+    `<li>${i.source_id} <span class="badge ${i.kind}">${i.kind}</span> = ${i.value} <a href="${i.verify_url}" target="_blank" rel="noopener">verify</a></li>`).join("")
+  c.innerHTML = `<p>${data.formula || ""}</p><ul>${rows}</ul>`
+  document.getElementById("modal").classList.remove("hidden")
+}
+
+function pairLabel(r) {
+  return `${r.pair_from}/${r.pair_to}`
+}
+
+function perSourceTables() {
+  const ids = [...new Set(records().map(r => r.source_id))]
+  return ids.map(id => {
+    const rs = bySource(id)
+    const rows = rs.map(r => `
+      <tr>
+        <td>${pairLabel(r)} ${badge(r)}</td>
+        <td>${fmt(r.buy_rial)}</td><td>${fmt(r.sell_rial)}</td>
+        <td>${fmt(r.price_rial)}</td><td>${r.status}</td>
+        <td><a href="${r.source_url}" target="_blank" rel="noopener">source</a>
+            &middot; <a href="${r.verify_url}" target="_blank" rel="noopener">verify</a></td>
+      </tr>`).join("")
+    return `<h3>${id}</h3>
+      <table><thead><tr><th>pair</th><th>buy</th><th>sell</th><th>price</th><th>status</th><th>links</th></tr></thead>
+      <tbody>${rows}</tbody></table>`
+  }).join("")
+}
+
+function combinedTable() {
+  const irr = records().filter(r => r.pair_to === "IRR" && r.pair_from !== "IRR")
+  const bySourceMap = {}
+  for (const r of irr) {
+    const key = r.source_id
+    bySourceMap[key] = bySourceMap[key] || {}
+    bySourceMap[key][r.pair_from] = r
+  }
+  const cols = Object.keys(bySourceMap)
+  const header = cols.map(c => `<th>${c}</th>`).join("")
+  const pairs = ["USD", "USDT", "CAD"]
+  const body = pairs.map(p => `<tr><td>${p}</td>` + cols.map(c => {
+    const r = bySourceMap[c][p]
+    if (!r) return `<td>-</td>`
+    return `<td>buy ${fmt(r.buy_rial)} / sell ${fmt(r.sell_rial)} ${r.price_rial != null ? "price " + fmt(r.price_rial) : ""}</td>`
+  }).join("") + `</tr>`).join("")
+  return `<h3>All sources, side by side (never merged)</h3>
+    <table><thead><tr><th>pair</th>${header}</tr></thead><tbody>${body}</tbody></table>`
+}
+
 function renderTables() {
   const body = document.getElementById("tables-body")
   if (!SNAPSHOT) { body.innerHTML = `<p class="no-data">no data for this date</p>`; return }
-  const rows = records().map(r => `
-    <tr>
-      <td>${r.source_id} <span class="badge ${r.kind}">${r.kind}</span></td>
-      <td>${r.pair_from}/${r.pair_to}</td>
-      <td>${fmt(r.buy_rial)}</td>
-      <td>${fmt(r.sell_rial)}</td>
-      <td>${fmt(r.price_rial)}</td>
-      <td><a href="${r.verify_url}" target="_blank" rel="noopener">verify</a></td>
-    </tr>`).join("")
-  body.innerHTML = `<table><thead><tr><th>source</th><th>pair</th><th>buy</th><th>sell</th><th>price</th><th>link</th></tr></thead><tbody>${rows}</tbody></table>`
+  body.innerHTML = combinedTable() + perSourceTables()
+  body.querySelectorAll(".badge.estimate").forEach(el => {
+    el.addEventListener("click", () => showProvenance(JSON.parse(el.dataset.prov)))
+  })
 }
+
+document.getElementById("modal-close").addEventListener("click", () => {
+  document.getElementById("modal").classList.add("hidden")
+})
 
 boot().catch(err => {
   document.getElementById("calc-result").textContent = "failed to load data: " + err.message
