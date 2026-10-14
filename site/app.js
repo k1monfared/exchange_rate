@@ -65,30 +65,35 @@ function directPair(from, to, sourceId, side) {
 function rate(from, to, sourceId, side) {
   // units of `to` per 1 unit of `from`, or null
   if (from === to) return 1
+
   if (sourceId === "estimate") {
-    if ((from === "CAD" && to === "IRR") || (from === "IRR" && to === "CAD")) {
-      const r = records().find(x => x.source_id === "cad_estimate")
-      const v = sideValue(r, side)
-      if (v == null) return null
-      return from === "CAD" ? v : 1 / v
-    }
+    const cadRec = records().find(x => x.source_id === "cad_estimate")
+    const gfxRec = records().find(x => x.source_id === "globalfx")
+    const cadIrr = sideValue(cadRec, side)                 // IRR per CAD
+    const usdIrr = averageLeg("USD", side)                 // IRR per USD (avg of enabled cash sources)
+    const gfx = gfxRec ? gfxRec.value : null               // USD per CAD
+    if (from === "CAD" && to === "IRR") return cadIrr
+    if (from === "IRR" && to === "CAD") return cadIrr != null ? 1 / cadIrr : null
+    if (from === "USD" && to === "IRR") return usdIrr
+    if (from === "IRR" && to === "USD") return usdIrr != null ? 1 / usdIrr : null
     if (from === "USD" && to === "CAD") {
-      const r = records().find(x => x.source_id === "globalfx")
-      return r ? r.value : null
+      if (gfx != null) return gfx
+      return (cadIrr != null && usdIrr != null) ? usdIrr / cadIrr : null
     }
-    // USD<->IRR estimate falls back to the average of enabled sources
-    const a = averageLeg("USD", side)
-    if (a == null) return null
-    return from === "USD" ? a : 1 / a
+    if (from === "CAD" && to === "USD") {
+      if (gfx != null) return 1 / gfx
+      return (cadIrr != null && usdIrr != null) ? cadIrr / usdIrr : null
+    }
+    return null
   }
+
   if (sourceId === "average") {
-    const a = averageLeg(from, side)
-    const b = averageLeg(to, side)
-    if (from === "IRR") { return b ? 1 / b : null }
-    if (to === "IRR") { const l = averageLeg(from, side); return l }
+    const a = legIrr(from, "average", side)   // IRR per from (1 when from === "IRR")
+    const b = legIrr(to, "average", side)     // IRR per to   (1 when to === "IRR")
     if (a == null || b == null) return null
     return a / b
   }
+
   const dp = directPair(from, to, sourceId, side)
   if (dp != null) return dp
   const a = legIrr(from, sourceId, side)
