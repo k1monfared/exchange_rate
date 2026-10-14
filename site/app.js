@@ -844,13 +844,15 @@ function resetZoom() {
   rescaleY(mainChart)
 }
 
+const DEFAULT_SOURCES = ["nerkhsanj", "bonbast_archive"]
+
 function buildToggles() {
   const curHost = document.getElementById("currency-toggles")
   const sideHost = document.getElementById("side-toggles")
   const srcHost = document.getElementById("source-toggles")
   curHost.innerHTML = historyCurrencies().map(c => `<label><input type="checkbox" value="${c}" checked> ${c}</label>`).join("")
-  sideHost.innerHTML = ["buy", "sell", "mid"].map(s => `<label><input type="checkbox" value="${s}" checked> ${s}</label>`).join("")
-  srcHost.innerHTML = allSourceIds().map(id => `<label>${sourceSwatches(id)}<input type="checkbox" value="${id}" checked> ${id}</label>`).join("")
+  sideHost.innerHTML = ["buy", "sell", "mid"].map(s => `<label><input type="checkbox" value="${s}" ${s === "mid" ? "checked" : ""}> ${s}</label>`).join("")
+  srcHost.innerHTML = allSourceIds().map(id => `<label>${sourceSwatches(id)}<input type="checkbox" value="${id}" ${DEFAULT_SOURCES.includes(id) ? "checked" : ""}> ${id}</label>`).join("")
   for (const host of [curHost, sideHost, srcHost]) {
     host.querySelectorAll("input").forEach(i => i.addEventListener("change", () => { updateChart(); renderTables() }))
   }
