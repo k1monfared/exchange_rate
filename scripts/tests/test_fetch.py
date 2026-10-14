@@ -93,3 +93,62 @@ def test_source_whose_url_raises_does_not_abort(tmp_path, monkeypatch):
     assert boom.verify_url == ""
     assert any(r.source_id == "globalfx" and r.status == "ok" for r in recs)
 
+
+CASH_REGISTRY = {"version": 1, "sources": [
+    {"source_id": "bonbast_archive", "label": "Bonbast", "kind": "exact",
+     "pair_from": "USD", "pair_to": "IRR", "verify_url": "https://bonbast.com/"},
+    {"source_id": "nerkhsanj", "label": "Nerkhsanj", "kind": "exact",
+     "pair_from": "USD", "pair_to": "IRR", "verify_url": "https://nerkh.jahankhahan.shop/"},
+    {"source_id": "globalfx", "label": "Global", "kind": "exact", "pair_from": "USD",
+     "pair_to": "CAD", "verify_url": "https://open.er-api.com/v6/latest/USD"},
+]}
+
+BONBAST_PAYLOAD = {
+    "2026/10/12": {"USD": {"sell": 260600, "buy": 260400},
+                   "CAD": {"sell": 182500, "buy": 182400}},
+}
+NERKHSANJ_PAYLOAD = {"date": "1405/07/21", "rates": {"dollar": 257710, "cad": 181380}}
+
+
+def _cash_fetch(url):
+    if "archive" in url:
+        return BONBAST_PAYLOAD
+    if "nerkh" in url:
+        return NERKHSANJ_PAYLOAD
+    if "er-api" in url:
+        return {"rates": {"CAD": 1.4221}, "time_last_update_utc": "x"}
+    raise AssertionError(url)
+
+
+def test_run_appends_cad_estimate(tmp_path):
+    d = str(tmp_path)
+    recs = run("2026-10-13", d, CASH_REGISTRY, _cash_fetch, "x")
+    est = next((r for r in recs if r.source_id == "cad_estimate"), None)
+    assert est is not None
+    assert est.kind == "estimate"
+    assert est.pair_from == "CAD" and est.pair_to == "IRR"
+    assert est.inputs
+
+
+def test_run_no_estimate_when_globalfx_absent(tmp_path):
+    d = str(tmp_path)
+    reg = {"version": 1, "sources": [
+        s for s in CASH_REGISTRY["sources"] if s["source_id"] != "globalfx"
+    ]}
+    recs = run("2026-10-13", d, reg, _cash_fetch, "x")
+    assert not any(r.source_id == "cad_estimate" for r in recs)
+    assert any(r.source_id == "bonbast_archive" and r.status == "ok" for r in recs)
+
+
+def test_run_no_estimate_when_globalfx_errors(tmp_path):
+    d = str(tmp_path)
+
+    def fx_error(url):
+        if "er-api" in url:
+            raise RuntimeError("fx down")
+        return _cash_fetch(url)
+
+    recs = run("2026-10-13", d, CASH_REGISTRY, fx_error, "x")
+    assert not any(r.source_id == "cad_estimate" for r in recs)
+    assert any(r.source_id == "globalfx" and r.status == "error" for r in recs)
+

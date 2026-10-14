@@ -16,6 +16,8 @@ def _side(rec: Record, side: str) -> int | None:
 def cad_estimate(usd_rec: Record, fx_rec: Record) -> Record:
     # 1 CAD = (IRR per USD) / (CAD per USD)  where CAD per USD = 1 / value
     cad_per_usd = 1.0 / fx_rec.value
+    usd_sell = usd_rec.sell_rial if usd_rec.sell_rial is not None else usd_rec.price_rial
+    usd_buy = usd_rec.buy_rial if usd_rec.buy_rial is not None else usd_rec.price_rial
     inputs = [
         Input(source_id=usd_rec.source_id,
               value=usd_rec.sell_rial or usd_rec.price_rial,
@@ -29,8 +31,8 @@ def cad_estimate(usd_rec: Record, fx_rec: Record) -> Record:
         kind="estimate",
         pair_from="CAD",
         pair_to="IRR",
-        buy_rial=round(usd_rec.buy_rial / cad_per_usd) if usd_rec.buy_rial else None,
-        sell_rial=round(usd_rec.sell_rial / cad_per_usd) if usd_rec.sell_rial else None,
+        buy_rial=round(usd_buy / cad_per_usd) if usd_buy is not None else None,
+        sell_rial=round(usd_sell / cad_per_usd) if usd_sell is not None else None,
         formula="IRR_per_CAD = IRR_per_USD / CAD_per_USD",
         inputs=inputs,
     )

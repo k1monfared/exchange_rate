@@ -21,6 +21,17 @@ def test_cad_estimate_formula_and_inputs():
     assert est.formula
 
 
+def test_cad_estimate_tolerates_single_sided_usd():
+    usd = Record(source_id="nerkhsanj", kind="exact", pair_from="USD", pair_to="IRR",
+                 price_rial=2577100, single_sided=True)
+    fx = Record(source_id="globalfx", kind="exact", pair_from="USD", pair_to="CAD",
+                value=1 / 1.4221)
+    est = cad_estimate(usd, fx)
+    assert est.sell_rial == round(2577100 / 1.4221)
+    assert est.buy_rial == round(2577100 / 1.4221)
+    assert {i.source_id for i in est.inputs} == {"nerkhsanj", "globalfx"}
+
+
 def test_enabled_average_uses_only_requested_side_and_flags_estimate():
     recs = [
         Record(source_id="a", kind="proxy", pair_from="USDT", pair_to="IRR", sell_rial=100),

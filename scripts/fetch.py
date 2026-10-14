@@ -8,6 +8,7 @@ from typing import Callable
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
+from derive import cad_estimate
 from model import Record
 from registry import build_sources, load_registry
 from store import rebuild_index, write_snapshot
@@ -72,6 +73,23 @@ def run(date: str, data_dir: str, registry: dict,
             if _is_suspect(data_dir, rec):
                 rec.status = "suspect"
             records.append(rec)
+    try:
+        fx_rec = next((r for r in records if r.source_id == "globalfx"), None)
+        usd_rec = next(
+            (r for r in records
+             if r.source_id == "bonbast_archive" and r.pair_from == "USD"),
+            None,
+        )
+        if usd_rec is None:
+            usd_rec = next(
+                (r for r in records
+                 if r.source_id == "nerkhsanj" and r.pair_from == "USD"),
+                None,
+            )
+        if fx_rec is not None and usd_rec is not None:
+            records.append(cad_estimate(usd_rec, fx_rec))
+    except Exception:  # an estimate must never abort the run or be fabricated
+        pass
     write_snapshot(data_dir, date, records, now)
     rebuild_index(data_dir, registry, now)
     return records
