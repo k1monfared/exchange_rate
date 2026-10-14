@@ -177,7 +177,8 @@ let mainChart = null
 let perSourceCharts = []
 
 function buildMainChart() {
-  const ids = [...new Set(records().map(r => r.source_id))]
+  const dataIds = new Set(records().map(r => r.source_id))
+  const ids = enabledSourceIds().filter(id => dataIds.has(id))
   const datasets = []
   ids.forEach((id, i) => {
     const pair = id === "bonbast_archive" || id === "nerkhsanj" ? "USD" : "USDT"
@@ -206,9 +207,9 @@ function buildMainChart() {
 
 function buildPerSourceCharts() {
   const host = document.getElementById("per-source-charts")
-  host.innerHTML = ""
   perSourceCharts.forEach(c => c.destroy())
   perSourceCharts = []
+  host.innerHTML = ""
   const ids = enabledSourceIds()
   ids.forEach((id, i) => {
     const wrap = document.createElement("div")
