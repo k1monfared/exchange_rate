@@ -22,7 +22,7 @@ BONBAST_URL = ("https://raw.githubusercontent.com/SamadiPour/"
                "rial-exchange-rates-archive/data/gregorian_all.min.json")
 FRANKFURTER_URL = "https://api.frankfurter.dev/v1/1999-01-01..2100-01-01?base=USD&symbols=CAD"
 WALLEX_HISTORY_URL = ("https://api.wallex.ir/v1/udf/history?"
-                      "symbol=USDTTMN&resolution=1D&from={frm}&to=9999999999")
+                      "symbol=USDTTMN&resolution=1D&from={frm}&to={to}")
 
 
 def _prior_values(data_dir: str, source_id: str) -> list[int]:
@@ -125,31 +125,35 @@ def merge_history(data_dir: str, date: str, records: list, now: str) -> None:
     hist.save_history(path, h)
 
 
-def _recent_wallex_from(days: int) -> int:
+def _wallex_url(days: int) -> str:
     import time
-    return int(time.time()) - max(days, 90) * 86400
+    now = int(time.time())
+    return WALLEX_HISTORY_URL.format(frm=now - max(days, 90) * 86400, to=now)
 
 
-def build_history(fetch_json, days: int = 90) -> dict:
+def build_history(fetch_json, days: int = 900) -> dict:
     bonbast = fetch_json(BONBAST_URL)
     frankfurter = fetch_json(FRANKFURTER_URL)
     try:
-        wallex = fetch_json(WALLEX_HISTORY_URL.format(frm=_recent_wallex_from(days)))
+        wallex = fetch_json(_wallex_url(days))
     except Exception:
         wallex = None
     return hist.build_from_archive(bonbast, frankfurter, wallex, "")
 
 
 def backfill(days: int, data_dir: str, registry: dict, fetch_json, now: str) -> list[str]:
-    h = build_history(fetch_json, days)
-    bb_points = {k: v["points"] for k, v in h["sources"].items() if k.startswith("bonbast_archive:")}
+    path = os.path.join(data_dir, "history.json")
+    h = hist.load_history(path)
+    archive = build_history(fetch_json, days)
+    hist.merge_series(h, archive)
+    bb_points = {k: v["points"] for k, v in archive["sources"].items() if k.startswith("bonbast_archive:")}
     usd = bb_points.get("bonbast_archive:USD", {})
     all_dates = sorted(usd.keys())
     targets = all_dates[-days:] if days else []
     # date -> CAD per USD, for the CAD estimate inputs
     frankfurter = fetch_json(FRANKFURTER_URL)
     cad_per_usd = hist.frankfurter_series(frankfurter)
-    wallex_pts = h["sources"].get("wallex:USDT", {}).get("points", {})
+    wallex_pts = archive["sources"].get("wallex:USDT", {}).get("points", {})
     written = []
     for date in targets:
         recs: list[Record] = []
@@ -173,15 +177,14 @@ def backfill(days: int, data_dir: str, registry: dict, fetch_json, now: str) -> 
             recs.append(Record(
                 source_id="wallex", kind="proxy", pair_from="USDT", pair_to="IRR",
                 price_rial=price, single_sided=True, as_of=date,
-                source_url=WALLEX_HISTORY_URL.format(frm=_recent_wallex_from(days)),
-                verify_url="https://wallex.ir/",
+                source_url=_wallex_url(days), verify_url="https://wallex.ir/",
             ))
         validate_records(recs)
         write_snapshot(data_dir, date, recs, now)
         hist.add_records(h, date, recs)
         written.append(date)
     h["generated_at"] = now
-    hist.save_history(os.path.join(data_dir, "history.json"), h)
+    hist.save_history(path, h)
     rebuild_index(data_dir, registry, now)
     return written
 
@@ -209,11 +212,13 @@ def main(argv=None) -> int:
     registry = load_registry(args.registry)
 
     if args.archive:
-        h = build_history(_default_fetch_json, 400)
+        path = os.path.join(args.data_dir, "history.json")
+        h = hist.load_history(path)
+        hist.merge_series(h, build_history(_default_fetch_json))
         h["generated_at"] = args.now
-        hist.save_history(os.path.join(args.data_dir, "history.json"), h)
+        hist.save_history(path, h)
         n = sum(len(s["points"]) for s in h["sources"].values())
-        print(f"wrote {args.data_dir}/history.json: {len(h['sources'])} series, {n} points")
+        print(f"wrote {path}: {len(h['sources'])} series, {n} points")
         return 0
 
     if args.backfill:

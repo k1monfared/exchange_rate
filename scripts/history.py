@@ -46,6 +46,15 @@ def add_point(history: dict, source_id: str, pair_from: str, pair_to: str, kind:
     s["points"][iso(date)] = [buy, sell, price]
 
 
+def merge_series(dst: dict, src: dict) -> None:
+    for key, s in src.get("sources", {}).items():
+        d = dst["sources"].setdefault(key, {"points": {}})
+        for field in ("source_id", "pair_from", "pair_to", "kind", "verify_url"):
+            if field in s:
+                d[field] = s[field]
+        d["points"].update(s.get("points", {}))
+
+
 def add_records(history: dict, date: str, records: list) -> None:
     for r in records:
         d = r.to_dict() if hasattr(r, "to_dict") else r

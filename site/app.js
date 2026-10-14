@@ -950,25 +950,28 @@ function averageRowData(c, srcs) {
 }
 
 const TABLE_COLS = [
-  { key: "source", label: "source", w: "18%" },
+  { key: "source", label: "source", w: "20%" },
   { key: "kind", label: "kind", w: "12%" },
   { key: "currency", label: "currency", w: "11%" },
-  { key: "buy", label: "buy", w: "12%", side: "buy" },
-  { key: "sell", label: "sell", w: "12%", side: "sell" },
-  { key: "mid", label: "mid", w: "12%", side: "mid" },
+  { key: "buy", label: "buy", w: "11%", side: "buy" },
+  { key: "sell", label: "sell", w: "11%", side: "sell" },
+  { key: "mid", label: "mid", w: "11%", side: "mid" },
   { key: "asof", label: "as-of", w: "13%" },
-  { key: "status", label: "status", w: "10%" },
+  { key: "status", label: "status", w: "11%" },
 ]
 
 function tableCell(r, c, sides) {
   const cls = (c.side && !sides.includes(c.side)) ? ' class="dim"' : ""
   switch (c.key) {
     case "source": {
-      const url = r.source_url || r.verify_url
       const name = esc(r.source_id)
-      return url
-        ? `<td${cls}><a href="${esc(url)}" target="_blank" rel="noopener">${name}</a></td>`
-        : `<td${cls}>${name}</td>`
+      const icon = r.source_url
+        ? `<a class="json-icon" href="${esc(r.source_url)}" target="_blank" rel="noopener" title="source JSON">{}</a>`
+        : ""
+      const label = r.verify_url
+        ? `<a href="${esc(r.verify_url)}" target="_blank" rel="noopener">${name}</a>`
+        : name
+      return `<td${cls}>${icon}${label}</td>`
     }
     case "kind": return `<td${cls}>${badge(r)}</td>`
     case "currency": return `<td${cls}>${esc(r.pair_from)}</td>`
