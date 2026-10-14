@@ -42,7 +42,7 @@ Three classification values drive the labels on every number. This is the module
 - **proxy**: the source quotes something close but not identical, such as USDT/IRT standing in for the cash dollar. Shown with a `proxy (USDT)` badge.
 - **estimate**: a value this project computes from other numbers. Shown with an `estimate` badge and an input-and-formula popup.
 
-| source_id | provides | class | units | notes |
+| source_id | provides | kind | units | notes |
 |---|---|---|---|---|
 | `nerkhsanj` | USD price, CAD price | exact | toman | single-sided (one number per pair) |
 | `bonbast_archive` | USD buy/sell, CAD buy/sell | exact | toman | daily granularity, one-day lag, from Bonbast |
@@ -72,7 +72,7 @@ A single fetched or derived value is one **Record**:
 ```
 {
   "source_id": "nobitex",
-  "class": "proxy",
+  "kind": "proxy",
   "pair_from": "USDT",
   "pair_to": "IRR",
   "buy_rial": 26009900,
@@ -93,11 +93,11 @@ A derived Record adds:
 
 ```
 {
-  "class": "estimate",
+  "kind": "estimate",
   "formula": "cad_per_irr = usd_per_irr / usd_per_cad",
   "inputs": [
-    { "source_id": "bonbast_archive", "value": 2606000, "class": "exact", "verify_url": "..." },
-    { "source_id": "globalfx", "value": 1.4221, "class": "exact", "verify_url": "..." }
+    { "source_id": "bonbast_archive", "value": 2606000, "kind": "exact", "verify_url": "..." },
+    { "source_id": "globalfx", "value": 1.4221, "kind": "exact", "verify_url": "..." }
   ]
 }
 ```
@@ -125,13 +125,13 @@ One file per day, `data/snapshots/YYYY-MM-DD.json`:
   "generated_at": "...",
   "dates": ["2026-10-11", "2026-10-12", "2026-10-13"],
   "latest": "2026-10-13",
-  "sources": [ { "source_id": "...", "label": "...", "class": "...", "pair": "...", "verify_url": "..." } ]
+  "sources": [ { "source_id": "...", "label": "...", "kind": "...", "pair": "...", "verify_url": "..." } ]
 }
 ```
 
 ### Registry file
 
-`data/meta.json` holds the static source registry (id, human label, class, pair, provider name, and the human `verify_url`). This is authored by hand and is the single place labels and verification links are defined. The snapshot stores the exact `source_url` fetched and copies the registry `verify_url` so a stored number keeps its link even if the registry changes.
+`data/meta.json` holds the static source registry (id, human label, kind, pair, provider name, and the human `verify_url`). This is authored by hand and is the single place labels and verification links are defined. The snapshot stores the exact `source_url` fetched and copies the registry `verify_url` so a stored number keeps its link even if the registry changes.
 
 ## 5. Estimates and provenance
 
@@ -141,7 +141,7 @@ v1 produces these derived values:
 - **Mid** = $(\text{buy} + \text{sell}) / 2$, computed only where both sides exist, per source.
 - **Enabled average** = the arithmetic mean of the chosen side across the sources the visitor has enabled. It is labeled an estimate and its popup lists exactly which sources fed it, with links.
 
-Every derived value carries `class: "estimate"`, a `formula` string, and an `inputs` array where each input names its source, value, class, and verify link. The front end renders the badge and the popup from these fields, so provenance is data, not prose.
+Every derived value carries `kind: "estimate"`, a `formula` string, and an `inputs` array where each input names its source, value, class, and verify link. The front end renders the badge and the popup from these fields, so provenance is data, not prose.
 
 ## 6. Front end
 
