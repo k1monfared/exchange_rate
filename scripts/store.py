@@ -25,10 +25,25 @@ def rebuild_index(data_dir: str, registry: dict, generated_at: str) -> dict:
     dates = sorted(
         f[:-5] for f in os.listdir(snap_dir) if f.endswith(".json")
     ) if os.path.isdir(snap_dir) else []
+    source_dates: dict = {}
+    for d in dates:
+        try:
+            with open(os.path.join(snap_dir, d + ".json"), encoding="utf-8") as fh:
+                doc = json.load(fh)
+        except (OSError, ValueError):
+            continue
+        for r in doc.get("records", []):
+            sid = r.get("source_id")
+            if not sid:
+                continue
+            lst = source_dates.setdefault(sid, [])
+            if not lst or lst[-1] != d:
+                lst.append(d)
     index = {
         "generated_at": generated_at,
         "dates": dates,
         "latest": dates[-1] if dates else None,
+        "source_dates": source_dates,
         "sources": [
             {
                 "source_id": s["source_id"],

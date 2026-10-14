@@ -97,6 +97,10 @@ def build_from_archive(bonbast_payload: dict, frankfurter_payload: dict,
             add_point(h, "bonbast_archive", pair, "IRR", "exact",
                       f"https://bonbast.com/graph/{pair.lower()}", date, *pt)
     ff = frankfurter_series(frankfurter_payload)  # date -> CAD per USD
+    for date, cad_per_usd in ff.items():
+        add_point(h, "globalfx", "USD", "CAD", "exact",
+                  "https://api.frankfurter.dev/v1/latest?base=USD&symbols=CAD",
+                  date, None, None, cad_per_usd)
     usd = bb["USD"]
     for date, cad_per_usd in ff.items():
         u = usd.get(date)
