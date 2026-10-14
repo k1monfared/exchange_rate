@@ -11,15 +11,19 @@ class Input:
     kind: str
     verify_url: str
     unit: str = "rial"
+    leg: Optional[str] = None
 
     def to_dict(self) -> dict:
-        return {
+        d = {
             "source_id": self.source_id,
             "value": self.value,
             "kind": self.kind,
             "verify_url": self.verify_url,
             "unit": self.unit,
         }
+        if self.leg is not None:
+            d["leg"] = self.leg
+        return d
 
 
 @dataclass

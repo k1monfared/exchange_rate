@@ -14,18 +14,28 @@ def _side(rec: Record, side: str) -> int | None:
 
 
 def cad_estimate(usd_rec: Record, fx_rec: Record) -> Record:
-    # 1 CAD = (IRR per USD) / (CAD per USD)  where CAD per USD = 1 / value
+    # 1 CAD = (IRR per USD) / (CAD per USD)  where CAD per USD = 1 / fx_rec.value
     cad_per_usd = 1.0 / fx_rec.value
     usd_sell = usd_rec.sell_rial if usd_rec.sell_rial is not None else usd_rec.price_rial
     usd_buy = usd_rec.buy_rial if usd_rec.buy_rial is not None else usd_rec.price_rial
-    inputs = [
-        Input(source_id=usd_rec.source_id,
-              value=usd_sell,
-              kind=usd_rec.kind,
-              verify_url=usd_rec.verify_url),
-        Input(source_id=fx_rec.source_id, value=fx_rec.value, kind=fx_rec.kind,
-              verify_url=fx_rec.verify_url, unit="ratio"),
-    ]
+    inputs = []
+    if usd_sell is not None:
+        inputs.append(Input(source_id=usd_rec.source_id,
+                            value=usd_sell,
+                            kind=usd_rec.kind,
+                            verify_url=usd_rec.verify_url,
+                            unit="rial",
+                            leg="sell"))
+    if usd_buy is not None and usd_buy != usd_sell:
+        inputs.append(Input(source_id=usd_rec.source_id,
+                            value=usd_buy,
+                            kind=usd_rec.kind,
+                            verify_url=usd_rec.verify_url,
+                            unit="rial",
+                            leg="buy"))
+    # stored as CAD per USD so a reader can plug it straight into the formula
+    inputs.append(Input(source_id=fx_rec.source_id, value=cad_per_usd, kind=fx_rec.kind,
+                        verify_url=fx_rec.verify_url, unit="ratio"))
     return Record(
         source_id="cad_estimate",
         kind="estimate",
@@ -33,7 +43,7 @@ def cad_estimate(usd_rec: Record, fx_rec: Record) -> Record:
         pair_to="IRR",
         buy_rial=round(usd_buy / cad_per_usd) if usd_buy is not None else None,
         sell_rial=round(usd_sell / cad_per_usd) if usd_sell is not None else None,
-        formula="IRR_per_CAD = IRR_per_USD / CAD_per_USD",
+        formula="sell: IRR_per_CAD = USD_sell / CAD_per_USD ; buy: IRR_per_CAD = USD_buy / CAD_per_USD",
         inputs=inputs,
     )
 

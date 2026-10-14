@@ -16,6 +16,8 @@ th:first-child, td:first-child { text-align: left; }
 .badge.exact { background: var(--exact); }
 .badge.proxy { background: var(--proxy); }
 .badge.estimate { background: var(--est); }
+.badge.unknown { background: #666; }
+.asof { color: var(--muted); font-size: .85rem; }
 .controls { display: flex; gap: 1rem; flex-wrap: wrap; align-items: center; margin-bottom: .5rem; }
 .controls label { flex-direction: row; align-items: center; color: var(--fg); }
 #source-toggles { display: flex; gap: .75rem; flex-wrap: wrap; font-size: .85rem; margin-bottom: .5rem; }

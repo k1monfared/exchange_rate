@@ -12,6 +12,7 @@ from derive import cad_estimate
 from model import Record
 from registry import build_sources, load_registry
 from store import rebuild_index, write_snapshot
+from validate import validate_records
 
 SANITY_LOW = 0.3
 SANITY_HIGH = 2.5
@@ -102,6 +103,7 @@ def run(date: str, data_dir: str, registry: dict,
             records.append(cad_estimate(usd_rec, fx_rec))
     except Exception:  # an estimate must never abort the run or be fabricated
         pass
+    validate_records(records)
     write_snapshot(data_dir, date, records, now)
     rebuild_index(data_dir, registry, now)
     return records

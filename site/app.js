@@ -17,6 +17,17 @@ function fmt(rial) {
   return v.toLocaleString(undefined, { maximumFractionDigits: 2 })
 }
 
+function esc(s) {
+  return String(s == null ? "" : s)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;")
+}
+
+function unitName() { return UNIT_DIVISOR === UNIT.toman ? "toman" : "rial" }
+
 function records() { return SNAPSHOT ? SNAPSHOT.records : [] }
 
 function bySource(id) { return records().filter(r => r.source_id === id) }
@@ -109,6 +120,58 @@ function enabledSourceIds() {
   return (INDEX.sources || []).map(s => s.source_id).filter(id => id !== "globalfx")
 }
 
+function provLine(r) {
+  const verify = r.verify_url
+    ? ` &middot; <a href="${esc(r.verify_url)}" target="_blank" rel="noopener">verify</a>`
+    : ""
+  const asof = r.as_of ? ` &middot; as of ${esc(r.as_of)}` : ""
+  return `${badge(r)}${verify}${asof}`
+}
+
+function estimateBacking(from, to) {
+  if ((from === "USD" && to === "CAD") || (from === "CAD" && to === "USD")) {
+    return records().find(r => r.source_id === "globalfx")
+  }
+  if (from === "CAD" || to === "CAD") {
+    return records().find(r => r.source_id === "cad_estimate")
+  }
+  return null
+}
+
+function backingFor(from, to, sourceId) {
+  for (const cur of [from, to]) {
+    if (cur === "IRR") continue
+    const rec = records().find(r =>
+      r.source_id === sourceId && r.pair_from === cur && r.pair_to === "IRR" && r.kind !== "estimate")
+    if (rec) return rec
+  }
+  return records().find(r => r.source_id === sourceId)
+}
+
+function averageInputs(ids) {
+  return ids.map(id => {
+    const r = records().find(x => x.source_id === id)
+    return { source_id: id, kind: r ? r.kind : "unknown", value: "", verify_url: r ? r.verify_url : "" }
+  })
+}
+
+function convertProvenance(from, to, sourceId) {
+  if (sourceId === "average") {
+    const ids = enabledSourceIds()
+    const phony = { kind: "estimate", formula: "average of enabled sources' chosen side", inputs: averageInputs(ids) }
+    return `${badge(phony)} <span>estimate over: ${esc(ids.join(", "))}</span>`
+  }
+  if (sourceId === "estimate") {
+    const rec = estimateBacking(from, to)
+    if (rec) return provLine(rec)
+    const ids = enabledSourceIds()
+    const phony = { kind: "estimate", formula: "derived from enabled sources", inputs: averageInputs(ids) }
+    return `${badge(phony)} <span>estimate over: ${esc(ids.join(", "))}</span>`
+  }
+  const rec = backingFor(from, to, sourceId)
+  return rec ? provLine(rec) : ""
+}
+
 function convert() {
   const date = document.getElementById("calc-date").value
   const from = document.getElementById("calc-from").value
@@ -118,7 +181,7 @@ function convert() {
   const amount = parseFloat(document.getElementById("calc-amount").value || "0")
   const out = document.getElementById("calc-result")
   const prov = document.getElementById("calc-provenance")
-  prov.textContent = ""
+  prov.innerHTML = ""
   out.className = "calc-result"
   if (!SNAPSHOT) { out.textContent = `no data for this date (${date})`; out.className = "calc-result no-data"; return }
   const r = rate(from, to, sourceId, side)
@@ -129,6 +192,7 @@ function convert() {
   if (to === "IRR") result = result / UNIT_DIVISOR
   const unitLabel = to === "IRR" ? (UNIT_DIVISOR === UNIT.toman ? " toman" : " rial") : ""
   out.textContent = `${amount} ${from} = ${result.toLocaleString(undefined, { maximumFractionDigits: 2 })} ${to}${unitLabel}`
+  prov.innerHTML = convertProvenance(from, to, sourceId)
 }
 
 function fillSelectors() {
@@ -184,7 +248,7 @@ function buildMainChart() {
     const pair = id === "bonbast_archive" || id === "nerkhsanj" ? "USD" : "USDT"
     const data = seriesFor({ sourceId: id, pair, side: "sell" })
     if (data.every(x => x == null)) return
-    datasets.push({ label: `${id} sell`, data, borderColor: PALETTE[i % PALETTE.length], spanGaps: true, tension: .2 })
+    datasets.push({ label: `${id} sell`, data, borderColor: PALETTE[i % PALETTE.length], spanGaps: false, tension: .2 })
   })
   const avg = INDEX.dates.map((d, idx) => {
     const vals = enabledSourceIds().map(id => {
@@ -194,7 +258,7 @@ function buildMainChart() {
     return vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : null
   })
   if (document.getElementById("toggle-avg").checked && avg.some(x => x != null)) {
-    datasets.push({ label: "average (estimate)", data: avg, borderColor: "#000", borderDash: [6, 4], spanGaps: true })
+    datasets.push({ label: "average (estimate)", data: avg, borderColor: "#000", borderDash: [6, 4], spanGaps: false })
   }
   const ctx = document.getElementById("main-chart")
   if (mainChart) mainChart.destroy()
@@ -219,11 +283,11 @@ function buildPerSourceCharts() {
     host.appendChild(wrap)
     const pair = id === "bonbast_archive" || id === "nerkhsanj" ? "USD" : "USDT"
     const ds = [
-      { label: "sell", data: seriesFor({ sourceId: id, pair, side: "sell" }), borderColor: "#c00", spanGaps: true },
-      { label: "buy", data: seriesFor({ sourceId: id, pair, side: "buy" }), borderColor: "#00c", spanGaps: true },
+      { label: "sell", data: seriesFor({ sourceId: id, pair, side: "sell" }), borderColor: "#c00", spanGaps: false },
+      { label: "buy", data: seriesFor({ sourceId: id, pair, side: "buy" }), borderColor: "#00c", spanGaps: false },
     ]
     if (document.getElementById("toggle-mid").checked) {
-      ds.push({ label: "mid", data: seriesFor({ sourceId: id, pair, side: "mid" }), borderColor: "#0a0", borderDash: [4, 4], spanGaps: true })
+      ds.push({ label: "mid", data: seriesFor({ sourceId: id, pair, side: "mid" }), borderColor: "#0a0", borderDash: [4, 4], spanGaps: false })
     }
     perSourceCharts.push(new Chart(canvas, { type: "line", data: { labels: INDEX.dates, datasets: ds }, options: { responsive: true } }))
   })
@@ -270,7 +334,10 @@ function badge(r) {
   if (r.kind === "proxy") {
     return `<span class="badge proxy" title="USDT is used as a proxy for the cash US dollar">proxy</span>`
   }
-  return `<span class="badge exact" title="Source publishes this pair directly">exact</span>`
+  if (r.kind === "exact") {
+    return `<span class="badge exact" title="Source publishes this pair directly">exact</span>`
+  }
+  return `<span class="badge unknown" title="unrecognized kind">${esc(r.kind || "unknown")}</span>`
 }
 
 function escapeAttr(s) { return s.replace(/'/g, "&#39;") }
@@ -278,13 +345,18 @@ function escapeAttr(s) { return s.replace(/'/g, "&#39;") }
 function showProvenance(data) {
   const c = document.getElementById("modal-content")
   const rows = (data.inputs || []).map(i =>
-    `<li>${i.source_id} <span class="badge ${i.kind}">${i.kind}</span> = ${i.value} <a href="${i.verify_url}" target="_blank" rel="noopener">verify</a></li>`).join("")
-  c.innerHTML = `<p>${data.formula || ""}</p><ul>${rows}</ul>`
+    `<li>${esc(i.source_id)} <span class="badge ${esc(i.kind)}">${esc(i.kind)}</span> = ${esc(i.value)}${i.leg ? ` (${esc(i.leg)})` : ""} <a href="${esc(i.verify_url)}" target="_blank" rel="noopener">verify</a></li>`).join("")
+  c.innerHTML = `<p>${esc(data.formula || "")}</p><ul>${rows}</ul>`
   document.getElementById("modal").classList.remove("hidden")
 }
 
 function pairLabel(r) {
   return `${r.pair_from}/${r.pair_to}`
+}
+
+function midText(r) {
+  if (r.buy_rial != null && r.sell_rial != null) return fmt((r.buy_rial + r.sell_rial) / 2)
+  return "-"
 }
 
 function perSourceTables() {
@@ -293,14 +365,18 @@ function perSourceTables() {
     const rs = bySource(id)
     const rows = rs.map(r => `
       <tr>
-        <td>${pairLabel(r)} ${badge(r)}</td>
+        <td>${esc(pairLabel(r))} ${badge(r)}</td>
         <td>${fmt(r.buy_rial)}</td><td>${fmt(r.sell_rial)}</td>
-        <td>${fmt(r.price_rial)}</td><td>${r.status}</td>
-        <td><a href="${r.source_url}" target="_blank" rel="noopener">source</a>
-            &middot; <a href="${r.verify_url}" target="_blank" rel="noopener">verify</a></td>
+        <td>${midText(r)}</td>
+        <td>${fmt(r.price_rial)}</td>
+        <td>${esc(unitName())}</td>
+        <td>${r.as_of ? esc(r.as_of) : "-"}</td>
+        <td>${esc(r.status)}</td>
+        <td><a href="${esc(r.source_url)}" target="_blank" rel="noopener">source</a>
+            &middot; <a href="${esc(r.verify_url)}" target="_blank" rel="noopener">verify</a></td>
       </tr>`).join("")
-    return `<h3>${id}</h3>
-      <table><thead><tr><th>pair</th><th>buy</th><th>sell</th><th>price</th><th>status</th><th>links</th></tr></thead>
+    return `<h3>${esc(id)}</h3>
+      <table><thead><tr><th>pair</th><th>buy</th><th>sell</th><th>mid</th><th>price</th><th>unit</th><th>as-of</th><th>status</th><th>verify</th></tr></thead>
       <tbody>${rows}</tbody></table>`
   }).join("")
 }
@@ -314,12 +390,12 @@ function combinedTable() {
     bySourceMap[key][r.pair_from] = r
   }
   const cols = Object.keys(bySourceMap)
-  const header = cols.map(c => `<th>${c}</th>`).join("")
+  const header = cols.map(c => `<th>${esc(c)}</th>`).join("")
   const pairs = ["USD", "USDT", "CAD"]
-  const body = pairs.map(p => `<tr><td>${p}</td>` + cols.map(c => {
+  const body = pairs.map(p => `<tr><td>${esc(p)}</td>` + cols.map(c => {
     const r = bySourceMap[c][p]
     if (!r) return `<td>-</td>`
-    return `<td>buy ${fmt(r.buy_rial)} / sell ${fmt(r.sell_rial)} ${r.price_rial != null ? "price " + fmt(r.price_rial) : ""}</td>`
+    return `<td>buy ${fmt(r.buy_rial)} / sell ${fmt(r.sell_rial)} ${r.price_rial != null ? "price " + fmt(r.price_rial) : ""} ${badge(r)}</td>`
   }).join("") + `</tr>`).join("")
   return `<h3>All sources, side by side (never merged)</h3>
     <table><thead><tr><th>pair</th>${header}</tr></thead><tbody>${body}</tbody></table>`
@@ -328,7 +404,10 @@ function combinedTable() {
 function renderTables() {
   const body = document.getElementById("tables-body")
   if (!SNAPSHOT) { body.innerHTML = `<p class="no-data">no data for this date</p>`; return }
-  body.innerHTML = combinedTable() + perSourceTables()
+  const asofs = records().map(r => r.as_of).filter(Boolean)
+  const asof = asofs.length ? asofs[asofs.length - 1] : "-"
+  const head = `<p class="asof">date ${esc(SNAPSHOT.date || "")} &middot; generated ${esc(SNAPSHOT.generated_at || "-")} &middot; latest as-of ${esc(asof)}</p>`
+  body.innerHTML = head + combinedTable() + perSourceTables()
   body.querySelectorAll(".badge.estimate").forEach(el => {
     el.addEventListener("click", () => showProvenance(JSON.parse(el.dataset.prov)))
   })
