@@ -8,10 +8,7 @@
 </head>
 <body>
   <header>
-    <div class="head-row">
-      <h1>exchange_rate</h1>
-      <button id="cal-toggle" type="button">calendar: Gregorian</button>
-    </div>
+    <h1>exchange_rate</h1>
     <p class="sub">Iran free-market rates. Sources kept separate. Exact, proxy, and estimate are always labeled.</p>
   </header>
 
@@ -63,6 +60,7 @@
       <div class="toggles-row"><span class="tk">side</span><span id="side-toggles" class="toggles"></span></div>
       <div class="toggles-row"><span class="tk">source</span><span id="source-toggles" class="toggles"></span></div>
       <label class="side-check"><input type="checkbox" id="toggle-avg" checked> average (estimate)</label>
+      <div class="toggles-row"><span class="tk">calendar</span><button id="cal-toggle" type="button">Gregorian</button></div>
       <label>unit
         <select id="unit"><option value="toman">toman</option><option value="rial">rial</option></select>
       </label>

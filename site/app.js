@@ -836,7 +836,7 @@ function buildToggles() {
 function rebuildCharts() { updateChart() }
 
 function updateCalToggleLabel() {
-  document.getElementById("cal-toggle").textContent = "calendar: " + (CAL === "gregorian" ? "Gregorian" : "Jalali (Shamsi)")
+  document.getElementById("cal-toggle").textContent = CAL === "gregorian" ? "Gregorian" : "Jalali (Shamsi)"
 }
 
 async function boot() {
