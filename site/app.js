@@ -30,8 +30,6 @@ function unitName() { return UNIT_DIVISOR === UNIT.toman ? "toman" : "rial" }
 
 function records() { return SNAPSHOT ? SNAPSHOT.records : [] }
 
-function bySource(id) { return records().filter(r => r.source_id === id) }
-
 function sideValue(rec, side) {
   // returns the value for a leg in RIAL, or the ratio for a non-IRR pair (globalfx)
   if (!rec) return null
@@ -238,58 +236,54 @@ function seriesFor(metric) {
 
 const PALETTE = ["#00548a", "#136f2f", "#8a5a00", "#8a0050", "#005f5f", "#5a008a", "#7a2e00", "#2e6f7a", "#6f136f"]
 let mainChart = null
-let perSourceCharts = []
+
+function shade(hex, pct) {
+  // pct in [-1,1]; negative darkens, positive lightens
+  const n = parseInt(hex.slice(1), 16)
+  let r = (n >> 16) & 255, g = (n >> 8) & 255, b = n & 255
+  if (pct < 0) { const k = 1 + pct; r = Math.round(r * k); g = Math.round(g * k); b = Math.round(b * k) }
+  else { r = Math.round(r + (255 - r) * pct); g = Math.round(g + (255 - g) * pct); b = Math.round(b + (255 - b) * pct) }
+  return "#" + [r, g, b].map(v => v.toString(16).padStart(2, "0")).join("")
+}
+
+function pairForSource(id) {
+  return id === "bonbast_archive" || id === "nerkhsanj" ? "USD" : "USDT"
+}
 
 function buildMainChart() {
   const dataIds = new Set(records().map(r => r.source_id))
   const ids = enabledSourceIds().filter(id => dataIds.has(id))
   const datasets = []
   ids.forEach((id, i) => {
-    const pair = id === "bonbast_archive" || id === "nerkhsanj" ? "USD" : "USDT"
-    const data = seriesFor({ sourceId: id, pair, side: "sell" })
-    if (data.every(x => x == null)) return
-    datasets.push({ label: `${id} sell`, data, borderColor: PALETTE[i % PALETTE.length], spanGaps: false, tension: .2 })
+    const pair = pairForSource(id)
+    const base = PALETTE[i % PALETTE.length]
+    const sides = [
+      { side: "buy", label: "buy", color: base, dash: [] },
+      { side: "sell", label: "sell", color: shade(base, -0.35), dash: [] },
+      { side: "mid", label: "mid", color: shade(base, 0.45), dash: [5, 4] },
+    ]
+    for (const s of sides) {
+      const data = seriesFor({ sourceId: id, pair, side: s.side })
+      if (data.every(x => x == null)) continue
+      datasets.push({
+        label: `${id} ${s.label}`, data, borderColor: s.color,
+        borderDash: s.dash, spanGaps: false, tension: .2, pointRadius: 0,
+      })
+    }
   })
   const avg = INDEX.dates.map((d, idx) => {
-    const vals = enabledSourceIds().map(id => {
-      const pair = id === "bonbast_archive" || id === "nerkhsanj" ? "USD" : "USDT"
-      return seriesFor({ sourceId: id, pair, side: "sell" })[idx]
-    }).filter(x => x != null)
+    const vals = enabledSourceIds().map(id => seriesFor({ sourceId: id, pair: pairForSource(id), side: "sell" })[idx]).filter(x => x != null)
     return vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : null
   })
   if (document.getElementById("toggle-avg").checked && avg.some(x => x != null)) {
-    datasets.push({ label: "average (estimate)", data: avg, borderColor: "#000", borderDash: [6, 4], spanGaps: false })
+    datasets.push({ label: "average (estimate)", data: avg, borderColor: "#000", borderDash: [6, 4], spanGaps: false, pointRadius: 0 })
   }
   const ctx = document.getElementById("main-chart")
   if (mainChart) mainChart.destroy()
   mainChart = new Chart(ctx, {
     type: "line",
     data: { labels: INDEX.dates, datasets },
-    options: { responsive: true, interaction: { mode: "index", intersect: false } },
-  })
-}
-
-function buildPerSourceCharts() {
-  const host = document.getElementById("per-source-charts")
-  perSourceCharts.forEach(c => c.destroy())
-  perSourceCharts = []
-  host.innerHTML = ""
-  const ids = enabledSourceIds()
-  ids.forEach((id, i) => {
-    const wrap = document.createElement("div")
-    const canvas = document.createElement("canvas")
-    wrap.appendChild(document.createElement("h4")).textContent = id
-    wrap.appendChild(canvas)
-    host.appendChild(wrap)
-    const pair = id === "bonbast_archive" || id === "nerkhsanj" ? "USD" : "USDT"
-    const ds = [
-      { label: "sell", data: seriesFor({ sourceId: id, pair, side: "sell" }), borderColor: "#c00", spanGaps: false },
-      { label: "buy", data: seriesFor({ sourceId: id, pair, side: "buy" }), borderColor: "#00c", spanGaps: false },
-    ]
-    if (document.getElementById("toggle-mid").checked) {
-      ds.push({ label: "mid", data: seriesFor({ sourceId: id, pair, side: "mid" }), borderColor: "#0a0", borderDash: [4, 4], spanGaps: false })
-    }
-    perSourceCharts.push(new Chart(canvas, { type: "line", data: { labels: INDEX.dates, datasets: ds }, options: { responsive: true } }))
+    options: { responsive: true, interaction: { mode: "index", intersect: false }, plugins: { legend: { labels: { boxWidth: 12 } } } },
   })
 }
 
@@ -297,10 +291,10 @@ function buildSourceToggles() {
   const host = document.getElementById("source-toggles")
   const ids = INDEX.sources.map(s => s.source_id).filter(id => id !== "globalfx")
   host.innerHTML = ids.map(id => `<label><input type="checkbox" value="${id}" checked> ${id}</label>`).join("")
-  host.querySelectorAll("input").forEach(i => i.addEventListener("change", () => { buildMainChart(); buildPerSourceCharts() }))
+  host.querySelectorAll("input").forEach(i => i.addEventListener("change", buildMainChart))
 }
 
-function rebuildCharts() { buildMainChart(); buildPerSourceCharts() }
+function rebuildCharts() { buildMainChart() }
 
 async function boot() {
   INDEX = await getJson("./data/index.json")
@@ -319,7 +313,6 @@ async function boot() {
   await loadAllSnapshots()
   buildSourceToggles()
   rebuildCharts()
-  document.getElementById("toggle-mid").addEventListener("change", rebuildCharts)
   document.getElementById("toggle-avg").addEventListener("change", rebuildCharts)
   document.getElementById("unit").addEventListener("change", e => {
     UNIT_DIVISOR = UNIT[e.target.value]
@@ -359,14 +352,17 @@ function midText(r) {
   return "-"
 }
 
-function perSourceTables() {
-  const ids = [...new Set(records().map(r => r.source_id))]
-  return ids.map(id => {
-    const rs = bySource(id)
-    const rows = rs.map(r => `
+function renderTables() {
+  const body = document.getElementById("tables-body")
+  if (!SNAPSHOT) { body.innerHTML = `<p class="no-data">no data for this date</p>`; return }
+  const rows = records()
+    .filter(r => r.pair_to === "IRR")
+    .map(r => `
       <tr>
-        <td>${esc(pairLabel(r))} ${badge(r)}</td>
-        <td>${fmt(r.buy_rial)}</td><td>${fmt(r.sell_rial)}</td>
+        <td>${esc(r.source_id)} ${badge(r)}</td>
+        <td>${esc(pairLabel(r))}</td>
+        <td>${fmt(r.buy_rial)}</td>
+        <td>${fmt(r.sell_rial)}</td>
         <td>${midText(r)}</td>
         <td>${fmt(r.price_rial)}</td>
         <td>${esc(unitName())}</td>
@@ -375,39 +371,13 @@ function perSourceTables() {
         <td><a href="${esc(r.source_url)}" target="_blank" rel="noopener">source</a>
             &middot; <a href="${esc(r.verify_url)}" target="_blank" rel="noopener">verify</a></td>
       </tr>`).join("")
-    return `<h3>${esc(id)}</h3>
-      <table><thead><tr><th>pair</th><th>buy</th><th>sell</th><th>mid</th><th>price</th><th>unit</th><th>as-of</th><th>status</th><th>verify</th></tr></thead>
-      <tbody>${rows}</tbody></table>`
-  }).join("")
-}
-
-function combinedTable() {
-  const irr = records().filter(r => r.pair_to === "IRR" && r.pair_from !== "IRR")
-  const bySourceMap = {}
-  for (const r of irr) {
-    const key = r.source_id
-    bySourceMap[key] = bySourceMap[key] || {}
-    bySourceMap[key][r.pair_from] = r
-  }
-  const cols = Object.keys(bySourceMap)
-  const header = cols.map(c => `<th>${esc(c)}</th>`).join("")
-  const pairs = ["USD", "USDT", "CAD"]
-  const body = pairs.map(p => `<tr><td>${esc(p)}</td>` + cols.map(c => {
-    const r = bySourceMap[c][p]
-    if (!r) return `<td>-</td>`
-    return `<td>buy ${fmt(r.buy_rial)} / sell ${fmt(r.sell_rial)} ${r.price_rial != null ? "price " + fmt(r.price_rial) : ""} ${badge(r)}</td>`
-  }).join("") + `</tr>`).join("")
-  return `<h3>All sources, side by side (never merged)</h3>
-    <table><thead><tr><th>pair</th>${header}</tr></thead><tbody>${body}</tbody></table>`
-}
-
-function renderTables() {
-  const body = document.getElementById("tables-body")
-  if (!SNAPSHOT) { body.innerHTML = `<p class="no-data">no data for this date</p>`; return }
-  const asofs = records().map(r => r.as_of).filter(Boolean)
+  const asofs = records().map(r => r.as_of).filter(Boolean).sort()
   const asof = asofs.length ? asofs[asofs.length - 1] : "-"
   const head = `<p class="asof">date ${esc(SNAPSHOT.date || "")} &middot; generated ${esc(SNAPSHOT.generated_at || "-")} &middot; latest as-of ${esc(asof)}</p>`
-  body.innerHTML = head + combinedTable() + perSourceTables()
+  const table = `<table>
+    <thead><tr><th>source</th><th>pair</th><th>buy</th><th>sell</th><th>mid</th><th>price</th><th>unit</th><th>as-of</th><th>status</th><th>links</th></tr></thead>
+    <tbody>${rows}</tbody></table>`
+  body.innerHTML = head + table
   body.querySelectorAll(".badge.estimate").forEach(el => {
     el.addEventListener("click", () => showProvenance(JSON.parse(el.dataset.prov)))
   })
