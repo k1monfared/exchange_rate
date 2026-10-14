@@ -52,6 +52,9 @@ table.grid th:nth-child(2), table.grid td:nth-child(2) { text-align: left; }
 .dim { color: #bbb; }
 .json-icon { color: var(--muted); text-decoration: none; margin-right: .35rem; font-family: ui-monospace, monospace; font-weight: 700; }
 .json-icon:hover { color: var(--proxy); }
+.asof-eq { color: #137333; font-weight: 600; }
+.asof-lt { color: #8a5a00; }
+.asof-gt { color: #0b5fa5; }
 .badge { font-size: .7rem; padding: .05rem .35rem; border-radius: 4px; color: #fff; cursor: help; }
 .badge.exact { background: var(--exact); }
 .badge.proxy { background: var(--proxy); }

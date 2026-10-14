@@ -112,6 +112,11 @@ const ISO_RE = /^\d{4}-\d{2}-\d{2}$/
 
 function faDigits(s) { return String(s).replace(/[0-9]/g, d => FA_DIGITS[+d]) }
 
+function todayIso() {
+  const d = new Date()
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`
+}
+
 // stored dates are Gregorian ISO (date or datetime); anything else returned verbatim
 function fmtDate(iso) {
   if (!iso) return "-"
@@ -978,7 +983,13 @@ function tableCell(r, c, sides) {
     case "buy": return `<td${cls}>${fmt(r.buy_rial)}</td>`
     case "sell": return `<td${cls}>${fmt(r.sell_rial)}</td>`
     case "mid": return `<td${cls}>${midText(r)}</td>`
-    case "asof": return `<td${cls}>${esc(fmtDate(r.as_of || CURRENT_DATE))}</td>`
+    case "asof": {
+      const mm = /(\d{4}-\d{2}-\d{2})/.exec(r.as_of || CURRENT_DATE)
+      const ds = mm ? mm[1] : CURRENT_DATE
+      const t = todayIso()
+      const c = ds === t ? "asof-eq" : (ds < t ? "asof-lt" : "asof-gt")
+      return `<td class="${c}">${esc(fmtDate(ds))}</td>`
+    }
     case "status": return `<td${cls}>${esc(r.status)}</td>`
   }
   return "<td></td>"
