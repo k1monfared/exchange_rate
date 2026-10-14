@@ -20,7 +20,7 @@ def cad_estimate(usd_rec: Record, fx_rec: Record) -> Record:
     usd_buy = usd_rec.buy_rial if usd_rec.buy_rial is not None else usd_rec.price_rial
     inputs = [
         Input(source_id=usd_rec.source_id,
-              value=usd_rec.sell_rial or usd_rec.price_rial,
+              value=usd_sell,
               kind=usd_rec.kind,
               verify_url=usd_rec.verify_url),
         Input(source_id=fx_rec.source_id, value=fx_rec.value, kind=fx_rec.kind,

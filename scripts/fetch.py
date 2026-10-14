@@ -45,6 +45,11 @@ def _is_suspect(data_dir: str, rec: Record) -> bool:
     return False
 
 
+def _has_usable_usd_price(rec: Record) -> bool:
+    return (rec.sell_rial is not None or rec.buy_rial is not None
+            or rec.price_rial is not None)
+
+
 def run(date: str, data_dir: str, registry: dict,
         fetch_json: Callable[[str], object], now: str) -> list[Record]:
     sources = build_sources(registry)
@@ -74,16 +79,23 @@ def run(date: str, data_dir: str, registry: dict,
                 rec.status = "suspect"
             records.append(rec)
     try:
-        fx_rec = next((r for r in records if r.source_id == "globalfx"), None)
+        fx_rec = next(
+            (r for r in records
+             if r.source_id == "globalfx" and r.status == "ok"
+             and r.value is not None),
+            None,
+        )
         usd_rec = next(
             (r for r in records
-             if r.source_id == "bonbast_archive" and r.pair_from == "USD"),
+             if r.source_id == "bonbast_archive" and r.pair_from == "USD"
+             and r.status == "ok" and _has_usable_usd_price(r)),
             None,
         )
         if usd_rec is None:
             usd_rec = next(
                 (r for r in records
-                 if r.source_id == "nerkhsanj" and r.pair_from == "USD"),
+                 if r.source_id == "nerkhsanj" and r.pair_from == "USD"
+                 and r.status == "ok" and _has_usable_usd_price(r)),
                 None,
             )
         if fx_rec is not None and usd_rec is not None:

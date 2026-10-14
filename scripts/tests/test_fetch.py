@@ -152,3 +152,20 @@ def test_run_no_estimate_when_globalfx_errors(tmp_path):
     assert not any(r.source_id == "cad_estimate" for r in recs)
     assert any(r.source_id == "globalfx" and r.status == "error" for r in recs)
 
+
+def test_estimate_falls_back_to_nerkhsanj_when_bonbast_errors(tmp_path):
+    d = str(tmp_path)
+
+    def bonbast_boom(url):
+        if "archive" in url:
+            raise RuntimeError("bonbast down")
+        return _cash_fetch(url)
+
+    recs = run("2026-10-13", d, CASH_REGISTRY, bonbast_boom, "x")
+    bon = next(r for r in recs if r.source_id == "bonbast_archive")
+    assert bon.status == "error"
+    est = next((r for r in recs if r.source_id == "cad_estimate"), None)
+    assert est is not None
+    assert est.sell_rial is not None and est.buy_rial is not None
+    assert {i.source_id for i in est.inputs} == {"nerkhsanj", "globalfx"}
+
