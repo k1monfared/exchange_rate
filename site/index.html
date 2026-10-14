@@ -21,8 +21,16 @@
       <div class="calendar-wrap">
         <div class="cal-head">
           <button id="cal-prev" type="button" aria-label="previous month">&lsaquo;</button>
-          <span id="cal-month"></span>
+          <button id="cal-title" type="button" class="cal-title"></button>
           <button id="cal-next" type="button" aria-label="next month">&rsaquo;</button>
+        </div>
+        <div id="cal-picker" class="cal-picker hidden">
+          <div class="cal-picker-year">
+            <button id="pick-prev-year" type="button" aria-label="previous year">&lsaquo;</button>
+            <span id="pick-year"></span>
+            <button id="pick-next-year" type="button" aria-label="next year">&rsaquo;</button>
+          </div>
+          <div id="pick-months" class="pick-months"></div>
         </div>
         <div id="cal-grid" class="cal-grid"></div>
         <p class="sub">selected: <span id="cal-selected"></span></p>
@@ -64,8 +72,17 @@
       <section id="tables" class="card"><h2>Sources</h2><div id="tables-body"></div></section>
       <section id="charts" class="card">
         <h2>History</h2>
-        <p class="sub">A line shows when its currency, side, and source are all on. Drag to pan, scroll or pinch to zoom (x-axis). Y auto-fits.</p>
+        <p class="sub">Drag the chart to pan, scroll or pinch to zoom. Y auto-fits.</p>
         <canvas id="main-chart" height="120"></canvas>
+        <div class="zoom-ind">
+          <div id="brush" class="brush">
+            <div id="brush-window" class="brush-window">
+              <div id="brush-left" class="brush-handle"></div>
+              <div id="brush-right" class="brush-handle"></div>
+            </div>
+          </div>
+          <div id="brush-label" class="brush-label"></div>
+        </div>
       </section>
     </main>
   </div>

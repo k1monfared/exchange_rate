@@ -8,6 +8,7 @@ let CURRENT_DATE = "" // date selected in the calendar (ISO yyyy-mm-dd)
 let DAY = []          // merged records for CURRENT_DATE (snapshot + history)
 let CAL = "gregorian" // display calendar: "gregorian" or "jalali"
 let VIEW_ANCHOR = ""  // ISO date anchoring the month shown in the calendar
+let PICK_YEAR = 0     // year shown in the month/year picker
 
 async function getJson(url) {
   const r = await fetch(url)
@@ -106,14 +107,18 @@ function jalaliMonthLength(jy, jm) {
 
 const GREG_MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"]
 const JALALI_MONTHS = ["Farvardin", "Ordibehesht", "Khordad", "Tir", "Mordad", "Shahrivar", "Mehr", "Aban", "Azar", "Dey", "Bahman", "Esfand"]
+const JALALI_MONTHS_FA = ["فروردین", "اردیبهشت", "خرداد", "تیر", "مرداد", "شهریور", "مهر", "آبان", "آذر", "دی", "بهمن", "اسفند"]
+const FA_DIGITS = "۰۱۲۳۴۵۶۷۸۹"
 const ISO_RE = /^\d{4}-\d{2}-\d{2}$/
+
+function faDigits(s) { return String(s).replace(/[0-9]/g, d => FA_DIGITS[+d]) }
 
 function fmtDate(iso) {
   if (!iso) return "-"
   if (!ISO_RE.test(iso)) return iso
   if (CAL === "gregorian") return iso
   const j = isoToJalali(iso)
-  return `${j.jy}/${String(j.jm).padStart(2, "0")}/${String(j.jd).padStart(2, "0")}`
+  return faDigits(`${j.jy}/${String(j.jm).padStart(2, "0")}/${String(j.jd).padStart(2, "0")}`)
 }
 
 function fmt(rial) {
@@ -368,17 +373,17 @@ function renderCalendar() {
     dowLabels = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
   } else {
     const j = isoToJalali(VIEW_ANCHOR)
-    title = `${JALALI_MONTHS[j.jm - 1]} ${j.jy}`
+    title = `${JALALI_MONTHS_FA[j.jm - 1]} ${faDigits(j.jy)}`
     const jmLen = jalaliMonthLength(j.jy, j.jm)
     firstIso = jalaliToIso(j.jy, j.jm, 1)
     for (let d = 1; d <= jmLen; d++) days.push({ iso: jalaliToIso(j.jy, j.jm, d), label: d })
-    dowLabels = ["Sat", "Sun", "Mon", "Tue", "Wed", "Thu", "Fri"]
+    dowLabels = ["ش", "ی", "د", "س", "چ", "پ", "ج"]
   }
 
   const rawDow = new Date(firstIso + "T00:00:00Z").getUTCDay() // 0 = Sun
   const pad = (CAL === "gregorian") ? rawDow : (rawDow + 1) % 7 // Sat = 0 for jalali
 
-  document.getElementById("cal-month").textContent = title
+  document.getElementById("cal-title").textContent = title
   document.getElementById("cal-selected").textContent = CURRENT_DATE ? fmtDate(CURRENT_DATE) : "none"
 
   let html = dowLabels.map(d => `<span class="cal-dow">${d}</span>`).join("")
@@ -386,7 +391,8 @@ function renderCalendar() {
   for (const day of days) {
     const on = avail.has(day.iso)
     const sel = day.iso === CURRENT_DATE
-    html += `<button type="button" class="cal-day${on ? "" : " off"}${sel ? " sel" : ""}" data-date="${day.iso}" ${on ? "" : "disabled"}>${day.label}</button>`
+    const label = CAL === "jalali" ? faDigits(day.label) : day.label
+    html += `<button type="button" class="cal-day${on ? "" : " off"}${sel ? " sel" : ""}" data-date="${day.iso}" ${on ? "" : "disabled"}>${label}</button>`
   }
   grid.innerHTML = html
   grid.querySelectorAll("button.cal-day:not([disabled])").forEach(b =>
@@ -407,6 +413,36 @@ function shiftMonth(delta) {
     while (jm > 12) { jm -= 12; jy += 1 }
     VIEW_ANCHOR = jalaliToIso(jy, jm, 1)
   }
+  renderCalendar()
+}
+
+function pickerYear() {
+  return CAL === "gregorian" ? +VIEW_ANCHOR.slice(0, 4) : isoToJalali(VIEW_ANCHOR).jy
+}
+
+function renderPicker() {
+  if (!PICK_YEAR) PICK_YEAR = pickerYear()
+  const jalali = CAL === "jalali"
+  const months = jalali ? JALALI_MONTHS_FA : GREG_MONTHS
+  document.getElementById("pick-year").textContent = jalali ? faDigits(PICK_YEAR) : PICK_YEAR
+  document.getElementById("pick-months").innerHTML = months.map((mn, i) =>
+    `<button type="button" class="pick-month" data-m="${i + 1}">${jalali ? mn : mn.slice(0, 3)}</button>`).join("")
+  document.getElementById("pick-months").querySelectorAll("button").forEach(b =>
+    b.addEventListener("click", () => pickMonth(+b.dataset.m)))
+}
+
+function openPicker() {
+  PICK_YEAR = pickerYear()
+  renderPicker()
+  document.getElementById("cal-picker").classList.remove("hidden")
+}
+
+function closePicker() { document.getElementById("cal-picker").classList.add("hidden") }
+
+function pickMonth(m) {
+  if (CAL === "gregorian") VIEW_ANCHOR = `${PICK_YEAR}-${String(m).padStart(2, "0")}-01`
+  else VIEW_ANCHOR = jalaliToIso(PICK_YEAR, m, 1)
+  closePicker()
   renderCalendar()
 }
 
@@ -520,6 +556,7 @@ async function loadHistory() {
 const PALETTE = ["#00548a", "#136f2f", "#8a5a00", "#8a0050", "#005f5f", "#5a008a", "#7a2e00", "#2e6f7a", "#6f136f"]
 let mainChart = null
 let savedX = null
+let chartDates = []
 
 function defaultRange(dates) {
   // last 4 weeks of available data, as a category-index range
@@ -553,6 +590,25 @@ function historySourceIds() {
   return [...new Set(Object.values(HISTORY.sources).map(s => s.source_id))]
 }
 
+function seriesKeys() {
+  return (HISTORY && HISTORY.sources) ? Object.keys(HISTORY.sources).sort() : []
+}
+
+function colorForSeries(key) {
+  const keys = seriesKeys()
+  let idx = keys.indexOf(key)
+  if (idx < 0) idx = 0
+  return PALETTE[idx % PALETTE.length]
+}
+
+function sourceSwatches(id) {
+  if (!HISTORY || !HISTORY.sources) return ""
+  return Object.keys(HISTORY.sources)
+    .filter(k => HISTORY.sources[k].source_id === id)
+    .map(k => `<span class="swatch" style="background:${colorForSeries(k)}" title="${esc(k)}"></span>`)
+    .join("")
+}
+
 function seriesVisible(series, cur, srcs) {
   return series.pair_to === "IRR" && cur.includes(currencyOfSeries(series)) && srcs.includes(series.source_id)
 }
@@ -567,11 +623,9 @@ function computeChartData() {
   const sides = enabledSides()
   const srcs = enabledSourceIds()
   const datasets = []
-  let i = 0
-  for (const series of Object.values(HISTORY.sources)) {
+  for (const [key, series] of Object.entries(HISTORY.sources)) {
     if (!seriesVisible(series, cur, srcs)) continue
-    const base = PALETTE[i % PALETTE.length]
-    i++
+    const base = colorForSeries(key)
     const label = `${series.source_id}:${series.pair_from}`
     const buy = dates.map(d => { const p = series.points[d]; return p && p[0] != null ? p[0] / UNIT_DIVISOR : null })
     const sell = dates.map(d => { const p = series.points[d]; return p && p[1] != null ? p[1] / UNIT_DIVISOR : null })
@@ -610,12 +664,12 @@ function chartOptions() {
   return {
     responsive: true,
     interaction: { mode: "index", intersect: false },
-    scales: {
-      x: { ticks: { maxTicksLimit: 12, autoSkip: true } },
-      y: {},
-    },
+      scales: {
+        x: { ticks: { maxTicksLimit: 20, autoSkip: true, maxRotation: 90, minRotation: 90 } },
+        y: {},
+      },
     plugins: {
-      legend: { labels: { boxWidth: 12 } },
+      legend: { display: false },
       zoom: {
         pan: { enabled: true, mode: "x", onPan: ({ chart }) => rescaleY(chart) },
         zoom: {
@@ -633,6 +687,7 @@ function buildMainChart() {
   const canvas = document.getElementById("main-chart")
   if (!HISTORY || !HISTORY.sources) return
   const { dates, datasets } = computeChartData()
+  chartDates = dates
   if (mainChart) mainChart.destroy()
   mainChart = new Chart(canvas, { type: "line", data: { labels: chartLabels(dates), datasets }, options: chartOptions() })
   const range = (savedX && savedX.min != null) ? savedX : defaultRange(dates)
@@ -642,12 +697,14 @@ function buildMainChart() {
     mainChart.update("none")
     rescaleY(mainChart)
   }
+  updateBrush()
 }
 
 function updateChart() {
   if (!HISTORY || !HISTORY.sources) return
   if (!mainChart) { buildMainChart(); return }
   const { dates, datasets } = computeChartData()
+  chartDates = dates
   mainChart.data.labels = chartLabels(dates)
   mainChart.data.datasets = datasets
   mainChart.update("none")
@@ -657,25 +714,95 @@ function updateChart() {
 let resetting = false
 
 function rescaleY(chart) {
-  if (resetting || !chart.scales || !chart.scales.x) return
-  const xs = chart.scales.x
-  if (xs.min == null) return
-  let lo = Infinity, hi = -Infinity
-  chart.data.datasets.forEach((ds, i) => {
-    if (!chart.isDatasetVisible(i)) return
-    for (let j = 0; j < ds.data.length; j++) {
-      const v = ds.data[j]
-      if (v == null) continue
-      if (j < xs.min - 0.5 || j > xs.max + 0.5) continue
-      if (v < lo) lo = v
-      if (v > hi) hi = v
+  if (!resetting && chart.scales && chart.scales.x && chart.scales.x.min != null) {
+    const xs = chart.scales.x
+    let lo = Infinity, hi = -Infinity
+    chart.data.datasets.forEach((ds, i) => {
+      if (!chart.isDatasetVisible(i)) return
+      for (let j = 0; j < ds.data.length; j++) {
+        const v = ds.data[j]
+        if (v == null) continue
+        if (j < xs.min - 0.5 || j > xs.max + 0.5) continue
+        if (v < lo) lo = v
+        if (v > hi) hi = v
+      }
+    })
+    if (isFinite(lo) && isFinite(hi)) {
+      const pad = (hi - lo) * 0.05 || Math.abs(hi) * 0.01 || 1
+      chart.options.scales.y.min = lo - pad
+      chart.options.scales.y.max = hi + pad
+      chart.update("none")
     }
-  })
-  if (!isFinite(lo) || !isFinite(hi)) return
-  const pad = (hi - lo) * 0.05 || Math.abs(hi) * 0.01 || 1
-  chart.options.scales.y.min = lo - pad
-  chart.options.scales.y.max = hi + pad
-  chart.update("none")
+  }
+  updateBrush()
+}
+
+function setChartRange(a, b) {
+  const n = chartDates.length
+  if (n < 2 || !mainChart) return
+  a = Math.max(0, Math.min(n - 1, a))
+  b = Math.max(0, Math.min(n - 1, b))
+  if (b - a < 1) b = Math.min(n - 1, a + 1)
+  mainChart.options.scales.x.min = a
+  mainChart.options.scales.x.max = b
+  mainChart.update("none")
+  rescaleY(mainChart)
+}
+
+function updateBrush() {
+  const win = document.getElementById("brush-window")
+  const label = document.getElementById("brush-label")
+  if (!win || !label) return
+  const n = chartDates.length
+  if (!mainChart || n < 2) { win.style.display = "none"; label.textContent = ""; return }
+  win.style.display = ""
+  const xs = mainChart.scales.x
+  const a = Math.max(0, Math.min(n - 1, xs.min))
+  const b = Math.max(0, Math.min(n - 1, xs.max))
+  const lf = a / (n - 1), rf = b / (n - 1)
+  const widthPct = Math.max(3, (rf - lf) * 100)
+  let leftPct = lf * 100
+  if (leftPct + widthPct > 100) leftPct = 100 - widthPct
+  win.style.left = leftPct + "%"
+  win.style.width = widthPct + "%"
+  const lo = Math.floor(a), hi = Math.ceil(b)
+  label.textContent = `${fmtDate(chartDates[lo])} to ${fmtDate(chartDates[hi])}  (${hi - lo + 1} of ${n} days)`
+}
+
+function initBrush() {
+  const brush = document.getElementById("brush")
+  if (!brush) return
+  let mode = null, startX = 0, startL = 0, startR = 0
+  const n = () => chartDates.length
+  function cur() {
+    const xs = mainChart.scales.x
+    return { l: Math.max(0, xs.min) / (n() - 1), r: Math.min(n() - 1, xs.max) / (n() - 1) }
+  }
+  function onDown(e) {
+    if (!mainChart || n() < 2) return
+    const t = e.target
+    mode = t.id === "brush-left" ? "l" : t.id === "brush-right" ? "r" : "pan"
+    const c = cur()
+    startL = c.l; startR = c.r; startX = e.clientX
+    try { brush.setPointerCapture(e.pointerId) } catch (_) {}
+    e.preventDefault()
+  }
+  function onMove(e) {
+    if (!mode) return
+    const rect = brush.getBoundingClientRect()
+    const dx = (e.clientX - startX) / rect.width
+    const minW = 1 / (n() - 1)
+    let l = startL, r = startR
+    if (mode === "l") l = Math.max(0, Math.min(startR - minW, startL + dx))
+    else if (mode === "r") r = Math.min(1, Math.max(startL + minW, startR + dx))
+    else { const w = startR - startL; l = Math.max(0, Math.min(1 - w, startL + dx)); r = l + w }
+    setChartRange(l * (n() - 1), r * (n() - 1))
+  }
+  function onUp(e) { mode = null; try { brush.releasePointerCapture(e.pointerId) } catch (_) {} }
+  brush.addEventListener("pointerdown", onDown)
+  brush.addEventListener("pointermove", onMove)
+  brush.addEventListener("pointerup", onUp)
+  brush.addEventListener("pointercancel", onUp)
 }
 
 function resetZoom() {
@@ -691,6 +818,7 @@ function resetZoom() {
   }
   mainChart.update("none")
   resetting = false
+  updateBrush()
 }
 
 function buildToggles() {
@@ -699,7 +827,7 @@ function buildToggles() {
   const srcHost = document.getElementById("source-toggles")
   curHost.innerHTML = historyCurrencies().map(c => `<label><input type="checkbox" value="${c}" checked> ${c}</label>`).join("")
   sideHost.innerHTML = ["buy", "sell", "mid"].map(s => `<label><input type="checkbox" value="${s}" checked> ${s}</label>`).join("")
-  srcHost.innerHTML = allSourceIds().map(id => `<label><input type="checkbox" value="${id}" checked> ${id}</label>`).join("")
+  srcHost.innerHTML = allSourceIds().map(id => `<label>${sourceSwatches(id)}<input type="checkbox" value="${id}" checked> ${id}</label>`).join("")
   for (const host of [curHost, sideHost, srcHost]) {
     host.querySelectorAll("input").forEach(i => i.addEventListener("change", () => { updateChart(); renderTables() }))
   }
@@ -734,10 +862,19 @@ async function boot() {
     convert(); renderTables(); updateChart()
   })
   document.getElementById("reset-zoom").addEventListener("click", resetZoom)
+  initBrush()
   document.getElementById("cal-prev").addEventListener("click", () => shiftMonth(-1))
   document.getElementById("cal-next").addEventListener("click", () => shiftMonth(1))
+  document.getElementById("cal-title").addEventListener("click", () => {
+    const p = document.getElementById("cal-picker")
+    if (p.classList.contains("hidden")) openPicker()
+    else closePicker()
+  })
+  document.getElementById("pick-prev-year").addEventListener("click", () => { PICK_YEAR -= 1; renderPicker() })
+  document.getElementById("pick-next-year").addEventListener("click", () => { PICK_YEAR += 1; renderPicker() })
   document.getElementById("cal-toggle").addEventListener("click", () => {
     CAL = CAL === "gregorian" ? "jalali" : "gregorian"
+    closePicker()
     updateCalToggleLabel()
     renderCalendar()
     convert(); renderTables(); updateChart()
