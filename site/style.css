@@ -42,6 +42,10 @@ select, input { padding: .35rem; font-size: 1rem; }
 table { border-collapse: collapse; width: 100%; margin-bottom: 1rem; }
 th, td { border: 1px solid var(--line); padding: .35rem .5rem; text-align: right; font-variant-numeric: tabular-nums; }
 th:first-child, td:first-child { text-align: left; }
+table.grid { table-layout: fixed; }
+table.grid th, table.grid td { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: .82rem; }
+table.grid th:nth-child(2), table.grid td:nth-child(2) { text-align: left; }
+.dim { color: #bbb; }
 .badge { font-size: .7rem; padding: .05rem .35rem; border-radius: 4px; color: #fff; cursor: help; }
 .badge.exact { background: var(--exact); }
 .badge.proxy { background: var(--proxy); }

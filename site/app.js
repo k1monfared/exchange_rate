@@ -944,13 +944,49 @@ function averageRowData(c, srcs) {
   }
 }
 
+const TABLE_COLS = [
+  { key: "source", label: "source", w: "15%" },
+  { key: "kind", label: "kind", w: "8%" },
+  { key: "pair", label: "pair", w: "7%" },
+  { key: "buy", label: "buy", w: "10%", side: "buy" },
+  { key: "sell", label: "sell", w: "10%", side: "sell" },
+  { key: "mid", label: "mid", w: "10%", side: "mid" },
+  { key: "price", label: "price", w: "10%" },
+  { key: "unit", label: "unit", w: "6%" },
+  { key: "asof", label: "as-of", w: "10%" },
+  { key: "status", label: "status", w: "6%" },
+  { key: "links", label: "links", w: "8%" },
+]
+
+function tableCell(r, c, sides) {
+  const cls = (c.side && !sides.includes(c.side)) ? ' class="dim"' : ""
+  switch (c.key) {
+    case "source": return `<td${cls}>${esc(r.source_id)}</td>`
+    case "kind": return `<td${cls}>${badge(r)}</td>`
+    case "pair": return `<td${cls}>${esc(pairLabel(r))}</td>`
+    case "buy": return `<td${cls}>${fmt(r.buy_rial)}</td>`
+    case "sell": return `<td${cls}>${fmt(r.sell_rial)}</td>`
+    case "mid": return `<td${cls}>${midText(r)}</td>`
+    case "price": return `<td${cls}>${fmt(r.price_rial)}</td>`
+    case "unit": return `<td${cls}>${esc(unitName())}</td>`
+    case "asof": return `<td${cls}>${esc(fmtDate(r.as_of || CURRENT_DATE))}</td>`
+    case "status": return `<td${cls}>${esc(r.status)}</td>`
+    case "links": {
+      const links = (r.source_url || r.verify_url)
+        ? `<a href="${esc(r.source_url || r.verify_url)}" target="_blank" rel="noopener">source</a>${r.verify_url ? ` &middot; <a href="${esc(r.verify_url)}" target="_blank" rel="noopener">verify</a>` : ""}`
+        : "-"
+      return `<td${cls}>${links}</td>`
+    }
+  }
+  return "<td></td>"
+}
+
 function renderTables() {
   const body = document.getElementById("tables-body")
   if (!DAY.length) { body.innerHTML = `<p class="no-data">no data for this date</p>`; return }
   const cur = enabledCurrencies()
   const sides = enabledSides()
   const srcs = enabledSourceIds()
-  const showBuy = sides.includes("buy"), showSell = sides.includes("sell"), showMid = sides.includes("mid")
 
   const rows = DAY.filter(r => r.pair_to === "IRR" && cur.includes(currencyOfRecord(r)) && srcs.includes(r.source_id))
   if (document.getElementById("toggle-avg").checked) {
@@ -960,29 +996,14 @@ function renderTables() {
     }
   }
 
-  let head = `<tr><th>source</th><th>pair</th>`
-  if (showBuy) head += `<th>buy</th>`
-  if (showSell) head += `<th>sell</th>`
-  if (showMid) head += `<th>mid</th>`
-  head += `<th>price</th><th>unit</th><th>as-of</th><th>status</th><th>links</th></tr>`
-
-  const rowHtml = rows.map(r => {
-    let h = `<tr><td>${esc(r.source_id)} ${badge(r)}</td><td>${esc(pairLabel(r))}</td>`
-    if (showBuy) h += `<td>${fmt(r.buy_rial)}</td>`
-    if (showSell) h += `<td>${fmt(r.sell_rial)}</td>`
-    if (showMid) h += `<td>${midText(r)}</td>`
-    h += `<td>${fmt(r.price_rial)}</td><td>${esc(unitName())}</td><td>${esc(fmtDate(r.as_of || CURRENT_DATE))}</td><td>${esc(r.status)}</td>`
-    const links = (r.source_url || r.verify_url)
-      ? `<a href="${esc(r.source_url || r.verify_url)}" target="_blank" rel="noopener">source</a>${r.verify_url ? ` &middot; <a href="${esc(r.verify_url)}" target="_blank" rel="noopener">verify</a>` : ""}`
-      : "-"
-    h += `<td>${links}</td></tr>`
-    return h
-  }).join("")
+  const colgroup = `<colgroup>${TABLE_COLS.map(c => `<col style="width:${c.w}">`).join("")}</colgroup>`
+  const head = `<tr>${TABLE_COLS.map(c => `<th${c.side && !sides.includes(c.side) ? ' class="dim"' : ""}>${c.label}</th>`).join("")}</tr>`
+  const rowHtml = rows.map(r => `<tr>${TABLE_COLS.map(c => tableCell(r, c, sides)).join("")}</tr>`).join("")
 
   const asofs = DAY.map(r => r.as_of).filter(Boolean).sort()
   const asof = asofs.length ? asofs[asofs.length - 1] : CURRENT_DATE
   const header = `<p class="asof">date ${esc(fmtDate(CURRENT_DATE))} &middot; latest as-of ${esc(fmtDate(asof))}</p>`
-  body.innerHTML = header + `<table><thead>${head}</thead><tbody>${rowHtml}</tbody></table>`
+  body.innerHTML = header + `<table class="grid">${colgroup}<thead>${head}</thead><tbody>${rowHtml}</tbody></table>`
   body.querySelectorAll(".badge.estimate").forEach(el => {
     el.addEventListener("click", () => showProvenance(JSON.parse(el.dataset.prov)))
   })
