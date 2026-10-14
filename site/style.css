@@ -12,9 +12,9 @@ h1 { margin: 0; }
 .calc-flex { display: flex; gap: 1.25rem; flex-wrap: wrap; }
 .calc-right { flex: 1 1 320px; min-width: 280px; }
 .calendar-wrap { flex: 0 0 280px; }
-.cal-head { display: flex; align-items: center; justify-content: space-between; gap: .5rem; margin-bottom: .4rem; }
-.cal-head button { border: 1px solid var(--line); background: #fff; border-radius: 4px; padding: 0 .5rem; font-size: 1.1rem; cursor: pointer; }
-#cal-title.cal-title { flex: 1; font-size: .9rem; font-weight: 600; padding: .3rem .5rem; }
+.cal-head { display: flex; align-items: center; justify-content: space-between; gap: .5rem; margin-bottom: .4rem; min-height: 2rem; }
+.cal-head button { border: 1px solid var(--line); background: #fff; border-radius: 4px; padding: 0 .5rem; font-size: 1.1rem; line-height: 1.6; cursor: pointer; }
+#cal-title.cal-title { flex: 1; font-size: .9rem; font-weight: 600; padding: .3rem .5rem; line-height: 1.4; }
 .cal-modal { border: 1px solid var(--line); border-radius: 8px; padding: 1rem; }
 .cal-modal::backdrop { background: rgba(0,0,0,.35); }
 .cal-modal-form { display: flex; flex-direction: column; gap: .7rem; min-width: 240px; }
@@ -31,9 +31,10 @@ h1 { margin: 0; }
 #brush-left { left: -1px; }
 #brush-right { right: -1px; }
 .brush-label { color: var(--muted); font-size: .8rem; font-variant-numeric: tabular-nums; margin-top: .25rem; }
-.cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
-.cal-dow { text-align: center; font-size: .7rem; color: var(--muted); }
-.cal-day { border: 1px solid var(--line); background: #fff; border-radius: 4px; padding: .3rem 0; cursor: pointer; font-size: .8rem; font-variant-numeric: tabular-nums; }
+.cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; grid-auto-rows: 2rem; align-content: start; min-height: calc(14rem + 12px); }
+.cal-dow { display: flex; align-items: center; justify-content: center; height: 2rem; font-size: .7rem; line-height: 1; color: var(--muted); }
+.cal-empty { display: block; }
+.cal-day { display: flex; align-items: center; justify-content: center; height: 2rem; padding: 0; border: 1px solid var(--line); background: #fff; border-radius: 4px; cursor: pointer; font-size: .8rem; line-height: 1; font-variant-numeric: tabular-nums; }
 .cal-day.off { color: #bbb; background: #f6f6f6; cursor: not-allowed; border-color: #eee; }
 .cal-day.sel { background: var(--proxy); color: #fff; border-color: var(--proxy); }
 label { display: flex; flex-direction: column; font-size: .85rem; color: var(--muted); gap: .25rem; }
