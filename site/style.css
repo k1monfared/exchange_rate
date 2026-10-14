@@ -20,7 +20,10 @@ th:first-child, td:first-child { text-align: left; }
 .asof { color: var(--muted); font-size: .85rem; }
 .controls { display: flex; gap: 1rem; flex-wrap: wrap; align-items: center; margin-bottom: .5rem; }
 .controls label { flex-direction: row; align-items: center; color: var(--fg); }
-#source-toggles { display: flex; gap: .75rem; flex-wrap: wrap; font-size: .85rem; margin-bottom: .5rem; }
+.toggles-row { display: flex; gap: .6rem; align-items: baseline; margin-bottom: .35rem; font-size: .85rem; }
+.toggles-row .tk { color: var(--muted); min-width: 4.5rem; }
+.toggles { display: flex; gap: .9rem; flex-wrap: wrap; }
+.toggles label { flex-direction: row; align-items: center; color: var(--fg); }
 .modal { position: fixed; inset: 0; background: rgba(0,0,0,.4); display: flex; align-items: center; justify-content: center; }
 .modal.hidden { display: none; }
 .modal-body { background: #fff; padding: 1rem; border-radius: 8px; max-width: 520px; }

@@ -36,15 +36,17 @@
 
   <section id="charts" class="card">
     <h2>History</h2>
+    <div class="toggles-row"><span class="tk">currency</span><span id="currency-toggles" class="toggles"></span></div>
+    <div class="toggles-row"><span class="tk">side</span><span id="side-toggles" class="toggles"></span></div>
+    <div class="toggles-row"><span class="tk">source</span><span id="source-toggles" class="toggles"></span></div>
     <div class="controls">
-      <label><input type="checkbox" id="toggle-avg" checked> average of enabled</label>
+      <label><input type="checkbox" id="toggle-avg" checked> average of enabled (estimate)</label>
       <label>unit
         <select id="unit"><option value="toman">toman</option><option value="rial">rial</option></select>
       </label>
       <button id="reset-zoom" type="button">reset zoom</button>
     </div>
-    <p class="sub">Drag to pan, scroll or pinch to zoom (x-axis).</p>
-    <div id="source-toggles"></div>
+    <p class="sub">Currency and side and source combine: a line shows when its currency, side, and source are all on. Drag to pan, scroll or pinch to zoom (x-axis). Y auto-fits.</p>
     <canvas id="main-chart" height="120"></canvas>
   </section>
 

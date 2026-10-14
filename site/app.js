@@ -113,12 +113,32 @@ function rate(from, to, sourceId, side) {
   return a / b
 }
 
-function enabledSourceIds() {
-  const boxes = [...document.querySelectorAll("#source-toggles input:checked")]
-  if (boxes.length) return boxes.map(b => b.value)
-  if (HISTORY && HISTORY.sources) return historySourceIds()
-  return (INDEX.sources || []).map(s => s.source_id).filter(id => id !== "globalfx")
+function allSourceIds() {
+  const h = (HISTORY && HISTORY.sources) ? historySourceIds() : []
+  const idx = (INDEX && INDEX.sources ? INDEX.sources : []).map(s => s.source_id)
+  return [...new Set([...h, ...idx])].filter(id => id !== "globalfx")
 }
+
+function checkedValues(hostId, allValues) {
+  const boxes = [...document.querySelectorAll(`#${hostId} input:checked`)]
+  if (boxes.length) return boxes.map(b => b.value)
+  return allValues
+}
+
+function currencyOfSeries(series) {
+  if (series.pair_from === "CAD") return "CAD"
+  if (series.pair_from === "USD" || series.pair_from === "USDT") return "USD"
+  return series.pair_from
+}
+
+function historyCurrencies() {
+  if (!HISTORY || !HISTORY.sources) return []
+  return [...new Set(Object.values(HISTORY.sources).map(currencyOfSeries))]
+}
+
+function enabledCurrencies() { return checkedValues("currency-toggles", historyCurrencies()) }
+function enabledSides() { return checkedValues("side-toggles", ["buy", "sell", "mid"]) }
+function enabledSourceIds() { return checkedValues("source-toggles", allSourceIds()) }
 
 function provLine(r) {
   const verify = r.verify_url
@@ -250,21 +270,26 @@ function historySourceIds() {
   return [...new Set(Object.values(HISTORY.sources).map(s => s.source_id))]
 }
 
+function seriesVisible(series, cur, srcs) {
+  return cur.includes(currencyOfSeries(series)) && srcs.includes(series.source_id)
+}
+
 function buildMainChart() {
-  const host = document.getElementById("main-chart")
+  const canvas = document.getElementById("main-chart")
   if (!HISTORY || !HISTORY.sources) return
   const dates = historyDates()
-  const enabled = enabledSourceIds()
+  const cur = enabledCurrencies()
+  const sides = enabledSides()
+  const srcs = enabledSourceIds()
   const datasets = []
   let i = 0
   for (const series of Object.values(HISTORY.sources)) {
-    if (!enabled.includes(series.source_id)) continue
+    if (!seriesVisible(series, cur, srcs)) continue
     const base = PALETTE[i % PALETTE.length]
     i++
     const label = `${series.source_id}:${series.pair_from}`
     const buy = dates.map(d => { const p = series.points[d]; return p && p[0] != null ? p[0] / UNIT_DIVISOR : null })
     const sell = dates.map(d => { const p = series.points[d]; return p && p[1] != null ? p[1] / UNIT_DIVISOR : null })
-    const price = dates.map(d => { const p = series.points[d]; return p && p[2] != null ? p[2] / UNIT_DIVISOR : null })
     const mid = dates.map(d => {
       const p = series.points[d]
       if (!p) return null
@@ -272,16 +297,14 @@ function buildMainChart() {
       if (p[2] != null) return p[2] / UNIT_DIVISOR
       return null
     })
-    const hasBoth = sell.some(x => x != null)
-    if (buy.some(x => x != null)) datasets.push({ label: `${label} buy`, data: buy, borderColor: base, borderDash: [], spanGaps: false, pointRadius: 0, tension: .2 })
-    if (hasBoth) datasets.push({ label: `${label} sell`, data: sell, borderColor: shade(base, -0.35), borderDash: [], spanGaps: false, pointRadius: 0, tension: .2 })
-    if (mid.some(x => x != null)) datasets.push({ label: `${label} mid`, data: mid, borderColor: shade(base, 0.45), borderDash: [5, 4], spanGaps: false, pointRadius: 0, tension: .2 })
-    if (!hasBoth && price.some(x => x != null)) datasets.push({ label: `${label} price`, data: price, borderColor: shade(base, 0.1), borderDash: [2, 2], spanGaps: false, pointRadius: 0, tension: .2 })
+    if (sides.includes("buy") && buy.some(x => x != null)) datasets.push({ label: `${label} buy`, data: buy, borderColor: base, borderDash: [], spanGaps: false, pointRadius: 0, tension: .2 })
+    if (sides.includes("sell") && sell.some(x => x != null)) datasets.push({ label: `${label} sell`, data: sell, borderColor: shade(base, -0.35), borderDash: [], spanGaps: false, pointRadius: 0, tension: .2 })
+    if (sides.includes("mid") && mid.some(x => x != null)) datasets.push({ label: `${label} mid`, data: mid, borderColor: shade(base, 0.45), borderDash: [5, 4], spanGaps: false, pointRadius: 0, tension: .2 })
   }
-  const avg = dates.map((d, idx) => {
+  const avg = dates.map(d => {
     const vals = []
     for (const series of Object.values(HISTORY.sources)) {
-      if (!enabled.includes(series.source_id)) continue
+      if (!seriesVisible(series, cur, srcs)) continue
       const p = series.points[d]
       if (p && p[1] != null) vals.push(p[1] / UNIT_DIVISOR)
     }
@@ -290,7 +313,6 @@ function buildMainChart() {
   if (document.getElementById("toggle-avg").checked && avg.some(x => x != null)) {
     datasets.push({ label: "average (estimate)", data: avg, borderColor: "#000", borderDash: [6, 4], spanGaps: false, pointRadius: 0 })
   }
-  const canvas = document.getElementById("main-chart")
   if (mainChart) mainChart.destroy()
   mainChart = new Chart(canvas, {
     type: "line",
@@ -354,11 +376,16 @@ function resetZoom() {
   resetting = false
 }
 
-function buildSourceToggles() {
-  const host = document.getElementById("source-toggles")
-  const ids = HISTORY ? historySourceIds() : []
-  host.innerHTML = ids.map(id => `<label><input type="checkbox" value="${id}" checked> ${id}</label>`).join("")
-  host.querySelectorAll("input").forEach(i => i.addEventListener("change", buildMainChart))
+function buildToggles() {
+  const curHost = document.getElementById("currency-toggles")
+  const sideHost = document.getElementById("side-toggles")
+  const srcHost = document.getElementById("source-toggles")
+  curHost.innerHTML = historyCurrencies().map(c => `<label><input type="checkbox" value="${c}" checked> ${c}</label>`).join("")
+  sideHost.innerHTML = ["buy", "sell", "mid"].map(s => `<label><input type="checkbox" value="${s}" checked> ${s}</label>`).join("")
+  srcHost.innerHTML = allSourceIds().map(id => `<label><input type="checkbox" value="${id}" checked> ${id}</label>`).join("")
+  for (const host of [curHost, sideHost, srcHost]) {
+    host.querySelectorAll("input").forEach(i => i.addEventListener("change", buildMainChart))
+  }
 }
 
 function rebuildCharts() { buildMainChart() }
@@ -378,7 +405,7 @@ async function boot() {
   convert()
   renderTables()
   await loadHistory()
-  buildSourceToggles()
+  buildToggles()
   rebuildCharts()
   document.getElementById("toggle-avg").addEventListener("change", rebuildCharts)
   document.getElementById("unit").addEventListener("change", e => {
