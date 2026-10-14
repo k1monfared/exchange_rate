@@ -186,7 +186,7 @@ Three badges: `exact`, `proxy (USDT)`, `estimate`. Clicking an `estimate` badge 
 - Trigger: `schedule` at `30 14 * * *` UTC, which is 18:00 Tehran (Iran is fixed at UTC+3:30, no daylight saving), plus `workflow_dispatch` for manual runs.
 - Steps: checkout, set up Python 3.12, `pip install -r requirements.txt`, run `python scripts/fetch.py`, commit any changed `data/` files as `github-actions[bot]`, build `_site/` from `site/` plus `data/`, deploy with `actions/deploy-pages`.
 - Idempotent: running twice on the same date overwrites that date's snapshot rather than duplicating it.
-- `python scripts/fetch.py --backfill YYYY-MM-DD` fills a specific past date where a source supports history (for example the Bonbast archive).
+- v1 has no backfill. None of the adapters can fetch a past date (the Bonbast archive adapter reads only the latest entry), so a past-dated snapshot would be fabricated. Backfill is deferred until an adapter exposes historical selection.
 - The job fails loudly (nonzero exit) only on structural failure. A single source erroring is recorded in the snapshot and does not fail the run.
 
 ## 8. Storage and history

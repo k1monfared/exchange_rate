@@ -1118,7 +1118,7 @@ git commit -m "feat: snapshot and index storage"
 - Consumes: everything above.
 - Produces:
   - `run(date: str, data_dir: str, registry: dict, fetch_json: Callable[[str], object], now: str) -> list[Record]`
-  - `main(argv) -> int` with flags `--date`, `--dry-run`, `--backfill`, `--data-dir`.
+  - `main(argv) -> int` with flags `--date`, `--dry-run`, `--data-dir`, `--registry`, `--now`. (v1 has no `--backfill`: no adapter can fetch history, so a past-dated snapshot would be fabricated. See ledger ruling.)
 
 - [ ] **Step 1: Write the failing tests**
 
