@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "sources": [
+    {"source_id": "nerkhsanj", "label": "Nerkhsanj", "kind": "exact", "pair_from": "USD,CAD", "pair_to": "IRR", "provider": "nerkh.jahankhahan.shop", "verify_url": "https://nerkh.jahankhahan.shop/developers/en", "note": "single price per pair, toman"},
+    {"source_id": "bonbast_archive", "label": "Bonbast (archive)", "kind": "exact", "pair_from": "USD,CAD", "pair_to": "IRR", "provider": "bonbast.com", "verify_url": "https://bonbast.com/graph/cad", "note": "daily, one-day lag, buy and sell"},
+    {"source_id": "tetherland", "label": "Tetherland (USDT proxy)", "kind": "proxy", "pair_from": "USDT", "pair_to": "IRR", "provider": "tetherland.com", "verify_url": "https://tetherland.com/", "note": "USDT stands in for cash USD"},
+    {"source_id": "nobitex", "label": "Nobitex (USDT proxy)", "kind": "proxy", "pair_from": "USDT", "pair_to": "IRR", "provider": "nobitex.ir", "verify_url": "https://nobitex.ir/markets/usdt-rls", "note": "rial"},
+    {"source_id": "ramzinex", "label": "Ramzinex (USDT proxy)", "kind": "proxy", "pair_from": "USDT", "pair_to": "IRR", "provider": "ramzinex.com", "verify_url": "https://ramzinex.com/exchange/usdt-irr", "note": "rial, orderbook"},
+    {"source_id": "wallex", "label": "Wallex (USDT proxy)", "kind": "proxy", "pair_from": "USDT", "pair_to": "IRR", "provider": "wallex.ir", "verify_url": "https://wallex.ir/", "note": "toman, bid/ask"},
+    {"source_id": "tabdeal", "label": "Tabdeal (USDT proxy)", "kind": "proxy", "pair_from": "USDT", "pair_to": "IRR", "provider": "tabdeal.org", "verify_url": "https://tabdeal.org/", "note": "toman, orderbook"},
+    {"source_id": "bitpin", "label": "Bitpin (USDT proxy)", "kind": "proxy", "pair_from": "USDT", "pair_to": "IRR", "provider": "bitpin.ir", "verify_url": "https://bitpin.ir/", "note": "toman, last price"},
+    {"source_id": "globalfx", "label": "Global USD/CAD (open.er-api.com)", "kind": "exact", "pair_from": "USD", "pair_to": "CAD", "provider": "open.er-api.com", "verify_url": "https://open.er-api.com/v6/latest/USD", "note": "global reference, input to CAD estimate"}
+  ]
+}
