@@ -295,8 +295,63 @@ function buildMainChart() {
   mainChart = new Chart(canvas, {
     type: "line",
     data: { labels: dates, datasets },
-    options: { responsive: true, interaction: { mode: "index", intersect: false }, plugins: { legend: { labels: { boxWidth: 12 } } } },
+    options: {
+      responsive: true,
+      interaction: { mode: "index", intersect: false },
+      scales: {
+        x: { ticks: { maxTicksLimit: 12, autoSkip: true } },
+        y: {},
+      },
+      plugins: {
+        legend: { labels: { boxWidth: 12 } },
+        zoom: {
+          pan: { enabled: true, mode: "x", onPan: ({ chart }) => rescaleY(chart) },
+          zoom: {
+            wheel: { enabled: true },
+            pinch: { enabled: true },
+            mode: "x",
+            onZoom: ({ chart }) => rescaleY(chart),
+          },
+        },
+      },
+    },
   })
+}
+
+let resetting = false
+
+function rescaleY(chart) {
+  if (resetting || !chart.scales || !chart.scales.x) return
+  const xs = chart.scales.x
+  if (xs.min == null) return
+  let lo = Infinity, hi = -Infinity
+  chart.data.datasets.forEach((ds, i) => {
+    if (!chart.isDatasetVisible(i)) return
+    for (let j = 0; j < ds.data.length; j++) {
+      const v = ds.data[j]
+      if (v == null) continue
+      if (j < xs.min - 0.5 || j > xs.max + 0.5) continue
+      if (v < lo) lo = v
+      if (v > hi) hi = v
+    }
+  })
+  if (!isFinite(lo) || !isFinite(hi)) return
+  const pad = (hi - lo) * 0.05 || Math.abs(hi) * 0.01 || 1
+  chart.options.scales.y.min = lo - pad
+  chart.options.scales.y.max = hi + pad
+  chart.update("none")
+}
+
+function resetZoom() {
+  if (!mainChart) return
+  resetting = true
+  mainChart.resetZoom()
+  if (mainChart.options.scales && mainChart.options.scales.y) {
+    delete mainChart.options.scales.y.min
+    delete mainChart.options.scales.y.max
+  }
+  mainChart.update("none")
+  resetting = false
 }
 
 function buildSourceToggles() {
@@ -330,6 +385,7 @@ async function boot() {
     UNIT_DIVISOR = UNIT[e.target.value]
     convert(); renderTables(); rebuildCharts()
   })
+  document.getElementById("reset-zoom").addEventListener("click", resetZoom)
 }
 
 function badge(r) {

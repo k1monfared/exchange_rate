@@ -41,7 +41,9 @@
       <label>unit
         <select id="unit"><option value="toman">toman</option><option value="rial">rial</option></select>
       </label>
+      <button id="reset-zoom" type="button">reset zoom</button>
     </div>
+    <p class="sub">Drag to pan, scroll or pinch to zoom (x-axis).</p>
     <div id="source-toggles"></div>
     <canvas id="main-chart" height="120"></canvas>
   </section>
@@ -49,6 +51,8 @@
   <div id="modal" class="modal hidden"><div class="modal-body"><button id="modal-close">close</button><div id="modal-content"></div></div></div>
 
   <script src="./vendor/chart.umd.min.js"></script>
+  <script src="./vendor/hammer.min.js"></script>
+  <script src="./vendor/chartjs-plugin-zoom.min.js"></script>
   <script src="./app.js"></script>
 </body>
 </html>
