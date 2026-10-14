@@ -230,6 +230,12 @@ function currencyOfSeries(series) {
   return series.pair_from
 }
 
+function currencyOfRecord(r) {
+  if (r.pair_from === "CAD") return "CAD"
+  if (r.pair_from === "USD" || r.pair_from === "USDT") return "USD"
+  return r.pair_from
+}
+
 function historyCurrencies() {
   if (!HISTORY || !HISTORY.sources) return []
   return [...new Set(Object.values(HISTORY.sources).map(currencyOfSeries))]
@@ -358,14 +364,14 @@ function renderCalendar() {
     title = `${GREG_MONTHS[m - 1]} ${y}`
     const dim = new Date(Date.UTC(y, m, 0)).getUTCDate()
     firstIso = `${y}-${String(m).padStart(2, "0")}-01`
-    for (let d = 1; d <= dim; d++) days.push(`${y}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`)
+    for (let d = 1; d <= dim; d++) days.push({ iso: `${y}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`, label: d })
     dowLabels = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
   } else {
     const j = isoToJalali(VIEW_ANCHOR)
     title = `${JALALI_MONTHS[j.jm - 1]} ${j.jy}`
     const jmLen = jalaliMonthLength(j.jy, j.jm)
     firstIso = jalaliToIso(j.jy, j.jm, 1)
-    for (let d = 1; d <= jmLen; d++) days.push(jalaliToIso(j.jy, j.jm, d))
+    for (let d = 1; d <= jmLen; d++) days.push({ iso: jalaliToIso(j.jy, j.jm, d), label: d })
     dowLabels = ["Sat", "Sun", "Mon", "Tue", "Wed", "Thu", "Fri"]
   }
 
@@ -377,10 +383,10 @@ function renderCalendar() {
 
   let html = dowLabels.map(d => `<span class="cal-dow">${d}</span>`).join("")
   for (let i = 0; i < pad; i++) html += `<span class="cal-empty"></span>`
-  for (const iso of days) {
-    const on = avail.has(iso)
-    const sel = iso === CURRENT_DATE
-    html += `<button type="button" class="cal-day${on ? "" : " off"}${sel ? " sel" : ""}" data-date="${iso}" ${on ? "" : "disabled"}>${fmtDate(iso).split("/").pop()}</button>`
+  for (const day of days) {
+    const on = avail.has(day.iso)
+    const sel = day.iso === CURRENT_DATE
+    html += `<button type="button" class="cal-day${on ? "" : " off"}${sel ? " sel" : ""}" data-date="${day.iso}" ${on ? "" : "disabled"}>${day.label}</button>`
   }
   grid.innerHTML = html
   grid.querySelectorAll("button.cal-day:not([disabled])").forEach(b =>
@@ -580,17 +586,22 @@ function computeChartData() {
     if (sides.includes("sell") && sell.some(x => x != null)) datasets.push({ label: `${label} sell`, data: sell, borderColor: shade(base, -0.35), borderDash: [], spanGaps: false, pointRadius: 0, tension: .2 })
     if (sides.includes("mid") && mid.some(x => x != null)) datasets.push({ label: `${label} mid`, data: mid, borderColor: shade(base, 0.45), borderDash: [5, 4], spanGaps: false, pointRadius: 0, tension: .2 })
   }
-  const avg = dates.map(d => {
-    const vals = []
-    for (const series of Object.values(HISTORY.sources)) {
-      if (!seriesVisible(series, cur, srcs)) continue
-      const p = series.points[d]
-      if (p && p[1] != null) vals.push(p[1] / UNIT_DIVISOR)
-    }
-    return vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : null
-  })
-  if (document.getElementById("toggle-avg").checked && avg.some(x => x != null)) {
-    datasets.push({ label: "average (estimate)", data: avg, borderColor: "#000", borderDash: [6, 4], spanGaps: false, pointRadius: 0 })
+  if (document.getElementById("toggle-avg").checked) {
+    cur.forEach((c, ci) => {
+      const avg = dates.map(d => {
+        const vals = []
+        for (const series of Object.values(HISTORY.sources)) {
+          if (currencyOfSeries(series) !== c) continue
+          if (!seriesVisible(series, cur, srcs)) continue
+          const p = series.points[d]
+          if (p && p[1] != null) vals.push(p[1] / UNIT_DIVISOR)
+        }
+        return vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : null
+      })
+      if (avg.some(x => x != null)) {
+        datasets.push({ label: `${c} average (estimate)`, data: avg, borderColor: ci === 0 ? "#000" : "#555", borderDash: [6, 4], spanGaps: false, pointRadius: 0 })
+      }
+    })
   }
   return { dates, datasets }
 }
@@ -690,7 +701,7 @@ function buildToggles() {
   sideHost.innerHTML = ["buy", "sell", "mid"].map(s => `<label><input type="checkbox" value="${s}" checked> ${s}</label>`).join("")
   srcHost.innerHTML = allSourceIds().map(id => `<label><input type="checkbox" value="${id}" checked> ${id}</label>`).join("")
   for (const host of [curHost, sideHost, srcHost]) {
-    host.querySelectorAll("input").forEach(i => i.addEventListener("change", updateChart))
+    host.querySelectorAll("input").forEach(i => i.addEventListener("change", () => { updateChart(); renderTables() }))
   }
 }
 
@@ -717,7 +728,7 @@ async function boot() {
   }
   document.getElementById("calc-source").addEventListener("change", convert)
 
-  document.getElementById("toggle-avg").addEventListener("change", updateChart)
+  document.getElementById("toggle-avg").addEventListener("change", () => { updateChart(); renderTables() })
   document.getElementById("unit").addEventListener("change", e => {
     UNIT_DIVISOR = UNIT[e.target.value]
     convert(); renderTables(); updateChart()
@@ -773,32 +784,67 @@ function midText(r) {
   return "-"
 }
 
+function averageRowData(c, srcs) {
+  const contrib = DAY.filter(r => r.pair_to === "IRR" && currencyOfRecord(r) === c && srcs.includes(r.source_id))
+  const avg = a => a.length ? Math.round(a.reduce((x, y) => x + y, 0) / a.length) : null
+  const buys = contrib.map(r => r.buy_rial).filter(v => v != null)
+  const sells = contrib.map(r => r.sell_rial).filter(v => v != null)
+  const prices = contrib.map(r => r.price_rial).filter(v => v != null)
+  if (!buys.length && !sells.length && !prices.length) return null
+  const single = !buys.length && !sells.length
+  const inputs = contrib.map(r => ({
+    source_id: r.source_id, kind: r.kind,
+    value: r.sell_rial != null ? r.sell_rial : (r.buy_rial != null ? r.buy_rial : r.price_rial),
+    verify_url: r.verify_url,
+  }))
+  return {
+    source_id: `average (${c})`, kind: "estimate", pair_from: c, pair_to: "IRR",
+    buy_rial: avg(buys), sell_rial: avg(sells),
+    price_rial: single ? avg(prices) : null,
+    as_of: CURRENT_DATE, verify_url: "", source_url: "", status: "ok",
+    formula: `average of enabled ${c} sources`, inputs,
+  }
+}
+
 function renderTables() {
   const body = document.getElementById("tables-body")
   if (!DAY.length) { body.innerHTML = `<p class="no-data">no data for this date</p>`; return }
-  const rows = DAY
-    .filter(r => r.pair_to === "IRR")
-    .map(r => `
-      <tr>
-        <td>${esc(r.source_id)} ${badge(r)}</td>
-        <td>${esc(pairLabel(r))}</td>
-        <td>${fmt(r.buy_rial)}</td>
-        <td>${fmt(r.sell_rial)}</td>
-        <td>${midText(r)}</td>
-        <td>${fmt(r.price_rial)}</td>
-        <td>${esc(unitName())}</td>
-        <td>${esc(fmtDate(r.as_of || CURRENT_DATE))}</td>
-        <td>${esc(r.status)}</td>
-        <td><a href="${esc(r.source_url)}" target="_blank" rel="noopener">source</a>
-            &middot; <a href="${esc(r.verify_url)}" target="_blank" rel="noopener">verify</a></td>
-      </tr>`).join("")
+  const cur = enabledCurrencies()
+  const sides = enabledSides()
+  const srcs = enabledSourceIds()
+  const showBuy = sides.includes("buy"), showSell = sides.includes("sell"), showMid = sides.includes("mid")
+
+  const rows = DAY.filter(r => r.pair_to === "IRR" && cur.includes(currencyOfRecord(r)) && srcs.includes(r.source_id))
+  if (document.getElementById("toggle-avg").checked) {
+    for (const c of cur) {
+      const ar = averageRowData(c, srcs)
+      if (ar) rows.push(ar)
+    }
+  }
+
+  let head = `<tr><th>source</th><th>pair</th>`
+  if (showBuy) head += `<th>buy</th>`
+  if (showSell) head += `<th>sell</th>`
+  if (showMid) head += `<th>mid</th>`
+  head += `<th>price</th><th>unit</th><th>as-of</th><th>status</th><th>links</th></tr>`
+
+  const rowHtml = rows.map(r => {
+    let h = `<tr><td>${esc(r.source_id)} ${badge(r)}</td><td>${esc(pairLabel(r))}</td>`
+    if (showBuy) h += `<td>${fmt(r.buy_rial)}</td>`
+    if (showSell) h += `<td>${fmt(r.sell_rial)}</td>`
+    if (showMid) h += `<td>${midText(r)}</td>`
+    h += `<td>${fmt(r.price_rial)}</td><td>${esc(unitName())}</td><td>${esc(fmtDate(r.as_of || CURRENT_DATE))}</td><td>${esc(r.status)}</td>`
+    const links = (r.source_url || r.verify_url)
+      ? `<a href="${esc(r.source_url || r.verify_url)}" target="_blank" rel="noopener">source</a>${r.verify_url ? ` &middot; <a href="${esc(r.verify_url)}" target="_blank" rel="noopener">verify</a>` : ""}`
+      : "-"
+    h += `<td>${links}</td></tr>`
+    return h
+  }).join("")
+
   const asofs = DAY.map(r => r.as_of).filter(Boolean).sort()
   const asof = asofs.length ? asofs[asofs.length - 1] : CURRENT_DATE
-  const head = `<p class="asof">date ${esc(fmtDate(CURRENT_DATE))} &middot; latest as-of ${esc(fmtDate(asof))}</p>`
-  const table = `<table>
-    <thead><tr><th>source</th><th>pair</th><th>buy</th><th>sell</th><th>mid</th><th>price</th><th>unit</th><th>as-of</th><th>status</th><th>links</th></tr></thead>
-    <tbody>${rows}</tbody></table>`
-  body.innerHTML = head + table
+  const header = `<p class="asof">date ${esc(fmtDate(CURRENT_DATE))} &middot; latest as-of ${esc(fmtDate(asof))}</p>`
+  body.innerHTML = header + `<table><thead>${head}</thead><tbody>${rowHtml}</tbody></table>`
   body.querySelectorAll(".badge.estimate").forEach(el => {
     el.addEventListener("click", () => showProvenance(JSON.parse(el.dataset.prov)))
   })

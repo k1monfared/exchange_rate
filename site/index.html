@@ -47,23 +47,28 @@
     </div>
   </section>
 
-  <section id="tables" class="card"><h2>Sources</h2><div id="tables-body"></div></section>
-
-  <section id="charts" class="card">
-    <h2>History</h2>
-    <div class="toggles-row"><span class="tk">currency</span><span id="currency-toggles" class="toggles"></span></div>
-    <div class="toggles-row"><span class="tk">side</span><span id="side-toggles" class="toggles"></span></div>
-    <div class="toggles-row"><span class="tk">source</span><span id="source-toggles" class="toggles"></span></div>
-    <div class="controls">
-      <label><input type="checkbox" id="toggle-avg" checked> average of enabled (estimate)</label>
+  <div class="layout">
+    <aside class="sidebar">
+      <h3>Toggles</h3>
+      <p class="sub">Apply to both the table and the chart.</p>
+      <div class="toggles-row"><span class="tk">currency</span><span id="currency-toggles" class="toggles"></span></div>
+      <div class="toggles-row"><span class="tk">side</span><span id="side-toggles" class="toggles"></span></div>
+      <div class="toggles-row"><span class="tk">source</span><span id="source-toggles" class="toggles"></span></div>
+      <label class="side-check"><input type="checkbox" id="toggle-avg" checked> average (estimate)</label>
       <label>unit
         <select id="unit"><option value="toman">toman</option><option value="rial">rial</option></select>
       </label>
       <button id="reset-zoom" type="button">reset zoom</button>
-    </div>
-    <p class="sub">Currency and side and source combine: a line shows when its currency, side, and source are all on. Drag to pan, scroll or pinch to zoom (x-axis). Y auto-fits.</p>
-    <canvas id="main-chart" height="120"></canvas>
-  </section>
+    </aside>
+    <main class="content">
+      <section id="tables" class="card"><h2>Sources</h2><div id="tables-body"></div></section>
+      <section id="charts" class="card">
+        <h2>History</h2>
+        <p class="sub">A line shows when its currency, side, and source are all on. Drag to pan, scroll or pinch to zoom (x-axis). Y auto-fits.</p>
+        <canvas id="main-chart" height="120"></canvas>
+      </section>
+    </main>
+  </div>
 
   <div id="modal" class="modal hidden"><div class="modal-body"><button id="modal-close">close</button><div id="modal-content"></div></div></div>
 

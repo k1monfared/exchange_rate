@@ -36,6 +36,14 @@ th:first-child, td:first-child { text-align: left; }
 .toggles-row .tk { color: var(--muted); min-width: 4.5rem; }
 .toggles { display: flex; gap: .9rem; flex-wrap: wrap; }
 .toggles label { flex-direction: row; align-items: center; color: var(--fg); }
+.layout { display: flex; gap: 1rem; align-items: flex-start; }
+.sidebar { flex: 0 0 210px; position: sticky; top: 1rem; border: 1px solid var(--line); border-radius: 8px; padding: 1rem; }
+.sidebar h3 { margin: 0 0 .25rem; }
+.sidebar .toggles-row { flex-direction: column; gap: .2rem; align-items: flex-start; }
+.sidebar .toggles { flex-direction: column; gap: .2rem; }
+.sidebar .side-check { flex-direction: row; align-items: center; color: var(--fg); margin: .4rem 0; }
+.content { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; }
+@media (max-width: 720px) { .layout { flex-direction: column; } .sidebar { position: static; flex: 1 1 auto; width: 100%; } }
 .modal { position: fixed; inset: 0; background: rgba(0,0,0,.4); display: flex; align-items: center; justify-content: center; }
 .modal.hidden { display: none; }
 .modal-body { background: #fff; padding: 1rem; border-radius: 8px; max-width: 520px; }
