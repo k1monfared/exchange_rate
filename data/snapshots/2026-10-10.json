@@ -1,0 +1,42 @@
+{
+  "date": "2026-10-10",
+  "generated_at": "2026-10-15T00:51:30+03:30",
+  "records": [
+    {
+      "as_of": "2026-10-10",
+      "buy_rial": 2653000,
+      "error": null,
+      "kind": "exact",
+      "native": {},
+      "pair_from": "USD",
+      "pair_to": "IRR",
+      "price_rial": null,
+      "raw": {},
+      "sell_rial": 2654000,
+      "single_sided": false,
+      "source_id": "bonbast_archive",
+      "source_url": "https://raw.githubusercontent.com/SamadiPour/rial-exchange-rates-archive/data/gregorian_all.min.json",
+      "status": "ok",
+      "value": null,
+      "verify_url": "https://bonbast.com/graph/usd"
+    },
+    {
+      "as_of": "2026-10-10",
+      "buy_rial": 1860000,
+      "error": null,
+      "kind": "exact",
+      "native": {},
+      "pair_from": "CAD",
+      "pair_to": "IRR",
+      "price_rial": null,
+      "raw": {},
+      "sell_rial": 1861000,
+      "single_sided": false,
+      "source_id": "bonbast_archive",
+      "source_url": "https://raw.githubusercontent.com/SamadiPour/rial-exchange-rates-archive/data/gregorian_all.min.json",
+      "status": "ok",
+      "value": null,
+      "verify_url": "https://bonbast.com/graph/cad"
+    }
+  ]
+}

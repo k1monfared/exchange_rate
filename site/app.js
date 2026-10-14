@@ -2,7 +2,8 @@ const UNIT = { toman: 10, rial: 1 }
 
 let INDEX = null
 let SNAPSHOT = null
-let SNAPSHOTS = {}   // date -> snapshot (loaded lazily for charts)
+let SNAPSHOTS = {}   // date -> snapshot (loaded lazily for the tables and converter)
+let HISTORY = null   // consolidated daily series for the chart
 let UNIT_DIVISOR = UNIT.toman
 
 async function getJson(url) {
@@ -115,6 +116,7 @@ function rate(from, to, sourceId, side) {
 function enabledSourceIds() {
   const boxes = [...document.querySelectorAll("#source-toggles input:checked")]
   if (boxes.length) return boxes.map(b => b.value)
+  if (HISTORY && HISTORY.sources) return historySourceIds()
   return (INDEX.sources || []).map(s => s.source_id).filter(id => id !== "globalfx")
 }
 
@@ -216,22 +218,12 @@ async function loadDate(date) {
   SNAPSHOT = SNAPSHOTS[date]
 }
 
-async function loadAllSnapshots() {
-  for (const d of INDEX.dates) {
-    if (!SNAPSHOTS[d]) SNAPSHOTS[d] = await getJson(`./data/snapshots/${d}.json`)
+async function loadHistory() {
+  try {
+    HISTORY = await getJson("./data/history.json")
+  } catch (_) {
+    HISTORY = null
   }
-}
-
-function seriesFor(metric) {
-  // metric: {sourceId, pair, side}
-  return INDEX.dates.map(d => {
-    const rec = (SNAPSHOTS[d].records || []).find(r =>
-      r.source_id === metric.sourceId && r.pair_from === metric.pair && r.pair_to === "IRR")
-    if (!rec) return null
-    let v = sideValue(rec, metric.side)
-    if (v == null) return null
-    return v / UNIT_DIVISOR
-  })
 }
 
 const PALETTE = ["#00548a", "#136f2f", "#8a5a00", "#8a0050", "#005f5f", "#5a008a", "#7a2e00", "#2e6f7a", "#6f136f"]
@@ -246,50 +238,70 @@ function shade(hex, pct) {
   return "#" + [r, g, b].map(v => v.toString(16).padStart(2, "0")).join("")
 }
 
-function pairForSource(id) {
-  return id === "bonbast_archive" || id === "nerkhsanj" ? "USD" : "USDT"
+function historyDates() {
+  const s = new Set()
+  for (const series of Object.values(HISTORY.sources)) {
+    for (const d of Object.keys(series.points)) s.add(d)
+  }
+  return [...s].sort()
+}
+
+function historySourceIds() {
+  return [...new Set(Object.values(HISTORY.sources).map(s => s.source_id))]
 }
 
 function buildMainChart() {
-  const dataIds = new Set(records().map(r => r.source_id))
-  const ids = enabledSourceIds().filter(id => dataIds.has(id))
+  const host = document.getElementById("main-chart")
+  if (!HISTORY || !HISTORY.sources) return
+  const dates = historyDates()
+  const enabled = enabledSourceIds()
   const datasets = []
-  ids.forEach((id, i) => {
-    const pair = pairForSource(id)
+  let i = 0
+  for (const series of Object.values(HISTORY.sources)) {
+    if (!enabled.includes(series.source_id)) continue
     const base = PALETTE[i % PALETTE.length]
-    const sides = [
-      { side: "buy", label: "buy", color: base, dash: [] },
-      { side: "sell", label: "sell", color: shade(base, -0.35), dash: [] },
-      { side: "mid", label: "mid", color: shade(base, 0.45), dash: [5, 4] },
-    ]
-    for (const s of sides) {
-      const data = seriesFor({ sourceId: id, pair, side: s.side })
-      if (data.every(x => x == null)) continue
-      datasets.push({
-        label: `${id} ${s.label}`, data, borderColor: s.color,
-        borderDash: s.dash, spanGaps: false, tension: .2, pointRadius: 0,
-      })
+    i++
+    const label = `${series.source_id}:${series.pair_from}`
+    const buy = dates.map(d => { const p = series.points[d]; return p && p[0] != null ? p[0] / UNIT_DIVISOR : null })
+    const sell = dates.map(d => { const p = series.points[d]; return p && p[1] != null ? p[1] / UNIT_DIVISOR : null })
+    const price = dates.map(d => { const p = series.points[d]; return p && p[2] != null ? p[2] / UNIT_DIVISOR : null })
+    const mid = dates.map(d => {
+      const p = series.points[d]
+      if (!p) return null
+      if (p[0] != null && p[1] != null) return (p[0] + p[1]) / 2 / UNIT_DIVISOR
+      if (p[2] != null) return p[2] / UNIT_DIVISOR
+      return null
+    })
+    const hasBoth = sell.some(x => x != null)
+    if (buy.some(x => x != null)) datasets.push({ label: `${label} buy`, data: buy, borderColor: base, borderDash: [], spanGaps: false, pointRadius: 0, tension: .2 })
+    if (hasBoth) datasets.push({ label: `${label} sell`, data: sell, borderColor: shade(base, -0.35), borderDash: [], spanGaps: false, pointRadius: 0, tension: .2 })
+    if (mid.some(x => x != null)) datasets.push({ label: `${label} mid`, data: mid, borderColor: shade(base, 0.45), borderDash: [5, 4], spanGaps: false, pointRadius: 0, tension: .2 })
+    if (!hasBoth && price.some(x => x != null)) datasets.push({ label: `${label} price`, data: price, borderColor: shade(base, 0.1), borderDash: [2, 2], spanGaps: false, pointRadius: 0, tension: .2 })
+  }
+  const avg = dates.map((d, idx) => {
+    const vals = []
+    for (const series of Object.values(HISTORY.sources)) {
+      if (!enabled.includes(series.source_id)) continue
+      const p = series.points[d]
+      if (p && p[1] != null) vals.push(p[1] / UNIT_DIVISOR)
     }
-  })
-  const avg = INDEX.dates.map((d, idx) => {
-    const vals = enabledSourceIds().map(id => seriesFor({ sourceId: id, pair: pairForSource(id), side: "sell" })[idx]).filter(x => x != null)
     return vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : null
   })
   if (document.getElementById("toggle-avg").checked && avg.some(x => x != null)) {
     datasets.push({ label: "average (estimate)", data: avg, borderColor: "#000", borderDash: [6, 4], spanGaps: false, pointRadius: 0 })
   }
-  const ctx = document.getElementById("main-chart")
+  const canvas = document.getElementById("main-chart")
   if (mainChart) mainChart.destroy()
-  mainChart = new Chart(ctx, {
+  mainChart = new Chart(canvas, {
     type: "line",
-    data: { labels: INDEX.dates, datasets },
+    data: { labels: dates, datasets },
     options: { responsive: true, interaction: { mode: "index", intersect: false }, plugins: { legend: { labels: { boxWidth: 12 } } } },
   })
 }
 
 function buildSourceToggles() {
   const host = document.getElementById("source-toggles")
-  const ids = INDEX.sources.map(s => s.source_id).filter(id => id !== "globalfx")
+  const ids = HISTORY ? historySourceIds() : []
   host.innerHTML = ids.map(id => `<label><input type="checkbox" value="${id}" checked> ${id}</label>`).join("")
   host.querySelectorAll("input").forEach(i => i.addEventListener("change", buildMainChart))
 }
@@ -310,7 +322,7 @@ async function boot() {
   await loadDate(INDEX.latest)
   convert()
   renderTables()
-  await loadAllSnapshots()
+  await loadHistory()
   buildSourceToggles()
   rebuildCharts()
   document.getElementById("toggle-avg").addEventListener("change", rebuildCharts)

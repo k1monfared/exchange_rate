@@ -32,6 +32,24 @@ Sources are always shown separately. Nothing merges them.
 
 One JSON snapshot per day in `data/snapshots/`, plus `data/index.json`. Canonical unit is rial, display defaults to toman.
 
+`data/history.json` is a consolidated daily series for the chart, covering the sources that publish history:
+
+- `bonbast_archive` (USD and CAD buy/sell), 2012 onward
+- `cad_estimate` (CAD/IRR, derived from bonbast USD and the global USD/CAD), 2012 onward
+- `wallex` USDT (price), for the window its API retains
+
+## Backfill and archive
+
+```bash
+# write per-day snapshots for the last 7 days the archive covers, and refresh history.json
+python -m scripts.fetch --backfill 7 --now "$(TZ=Asia/Tehran date -Iseconds)"
+
+# build the full history.json from the bonbast and frankfurter archives
+python -m scripts.fetch --archive --now "$(TZ=Asia/Tehran date -Iseconds)"
+```
+
+Backfilled snapshots contain only the history-capable sources (bonbast USD/CAD, the CAD estimate, and Wallex where available); the other sources have no per-day history and are simply absent for those days, never fabricated. The daily job also merges each day's records into `history.json`.
+
 ## Local development
 
 The page fetches `./data/...`, relative to the document root, so serve the assembled deploy layout (`site/` copied to the root of `_site/` and `data/` under `_site/data/`) rather than the repo root.
