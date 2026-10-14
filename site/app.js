@@ -8,7 +8,6 @@ let CURRENT_DATE = "" // date selected in the calendar (ISO yyyy-mm-dd)
 let DAY = []          // merged records for CURRENT_DATE (snapshot + history)
 let CAL = "gregorian" // display calendar: "gregorian" or "jalali"
 let VIEW_ANCHOR = ""  // ISO date anchoring the month shown in the calendar
-let PICK_YEAR = 0     // year shown in the month/year picker
 
 async function getJson(url) {
   const r = await fetch(url)
@@ -384,7 +383,6 @@ function renderCalendar() {
   const pad = (CAL === "gregorian") ? rawDow : (rawDow + 1) % 7 // Sat = 0 for jalali
 
   document.getElementById("cal-title").textContent = title
-  document.getElementById("cal-selected").textContent = CURRENT_DATE ? fmtDate(CURRENT_DATE) : "none"
 
   let html = dowLabels.map(d => `<span class="cal-dow">${d}</span>`).join("")
   for (let i = 0; i < pad; i++) html += `<span class="cal-empty"></span>`
@@ -416,33 +414,40 @@ function shiftMonth(delta) {
   renderCalendar()
 }
 
-function pickerYear() {
-  return CAL === "gregorian" ? +VIEW_ANCHOR.slice(0, 4) : isoToJalali(VIEW_ANCHOR).jy
+function calYearRange() {
+  const dates = (HISTORY && HISTORY.sources) ? historyDates() : []
+  const first = dates[0] || "1999-01-01"
+  const last = dates[dates.length - 1] || "2026-12-31"
+  if (CAL === "gregorian") return { min: +first.slice(0, 4), max: +last.slice(0, 4) }
+  return { min: isoToJalali(first).jy, max: isoToJalali(last).jy }
 }
 
-function renderPicker() {
-  if (!PICK_YEAR) PICK_YEAR = pickerYear()
+function openCalModal() {
   const jalali = CAL === "jalali"
   const months = jalali ? JALALI_MONTHS_FA : GREG_MONTHS
-  document.getElementById("pick-year").textContent = jalali ? faDigits(PICK_YEAR) : PICK_YEAR
-  document.getElementById("pick-months").innerHTML = months.map((mn, i) =>
-    `<button type="button" class="pick-month" data-m="${i + 1}">${jalali ? mn : mn.slice(0, 3)}</button>`).join("")
-  document.getElementById("pick-months").querySelectorAll("button").forEach(b =>
-    b.addEventListener("click", () => pickMonth(+b.dataset.m)))
+  const mSel = document.getElementById("pick-month")
+  mSel.innerHTML = months.map((mn, i) => `<option value="${i + 1}">${mn}</option>`).join("")
+  const yr = calYearRange()
+  const ySel = document.getElementById("pick-year")
+  let opts = ""
+  for (let y = yr.min; y <= yr.max; y++) opts += `<option value="${y}">${jalali ? faDigits(y) : y}</option>`
+  ySel.innerHTML = opts
+  if (jalali) {
+    const j = isoToJalali(VIEW_ANCHOR)
+    mSel.value = String(j.jm)
+    ySel.value = String(j.jy)
+  } else {
+    mSel.value = String(+VIEW_ANCHOR.slice(5, 7))
+    ySel.value = String(+VIEW_ANCHOR.slice(0, 4))
+  }
+  document.getElementById("cal-modal").showModal()
 }
 
-function openPicker() {
-  PICK_YEAR = pickerYear()
-  renderPicker()
-  document.getElementById("cal-picker").classList.remove("hidden")
-}
-
-function closePicker() { document.getElementById("cal-picker").classList.add("hidden") }
-
-function pickMonth(m) {
-  if (CAL === "gregorian") VIEW_ANCHOR = `${PICK_YEAR}-${String(m).padStart(2, "0")}-01`
-  else VIEW_ANCHOR = jalaliToIso(PICK_YEAR, m, 1)
-  closePicker()
+function applyCalModal() {
+  const jalali = CAL === "jalali"
+  const m = +document.getElementById("pick-month").value
+  const y = +document.getElementById("pick-year").value
+  VIEW_ANCHOR = jalali ? jalaliToIso(y, m, 1) : `${y}-${String(m).padStart(2, "0")}-01`
   renderCalendar()
 }
 
@@ -533,7 +538,7 @@ function convert() {
   let result = amt * r
   if (to === "IRR") result = result / UNIT_DIVISOR
   const unitLabel = to === "IRR" ? (UNIT_DIVISOR === UNIT.toman ? " toman" : " rial") : ""
-  out.textContent = `${amount} ${from} = ${result.toLocaleString(undefined, { maximumFractionDigits: 2 })} ${to}${unitLabel}`
+  out.innerHTML = `${amount} ${from} = ${result.toLocaleString(undefined, { maximumFractionDigits: 2 })} ${to}${unitLabel} <span class="asof-inline">as of ${esc(fmtDate(CURRENT_DATE))}</span>`
   prov.innerHTML = convertProvenance(from, to, sourceId)
 }
 
@@ -865,16 +870,12 @@ async function boot() {
   initBrush()
   document.getElementById("cal-prev").addEventListener("click", () => shiftMonth(-1))
   document.getElementById("cal-next").addEventListener("click", () => shiftMonth(1))
-  document.getElementById("cal-title").addEventListener("click", () => {
-    const p = document.getElementById("cal-picker")
-    if (p.classList.contains("hidden")) openPicker()
-    else closePicker()
-  })
-  document.getElementById("pick-prev-year").addEventListener("click", () => { PICK_YEAR -= 1; renderPicker() })
-  document.getElementById("pick-next-year").addEventListener("click", () => { PICK_YEAR += 1; renderPicker() })
+  document.getElementById("cal-title").addEventListener("click", openCalModal)
+  const calModal = document.getElementById("cal-modal")
+  calModal.addEventListener("close", () => { if (calModal.returnValue === "apply") applyCalModal() })
+  calModal.addEventListener("click", e => { if (e.target === calModal) calModal.close("cancel") })
   document.getElementById("cal-toggle").addEventListener("click", () => {
     CAL = CAL === "gregorian" ? "jalali" : "gregorian"
-    closePicker()
     updateCalToggleLabel()
     renderCalendar()
     convert(); renderTables(); updateChart()

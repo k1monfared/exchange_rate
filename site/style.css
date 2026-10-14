@@ -13,11 +13,14 @@ h1 { margin: 0; }
 .cal-head { display: flex; align-items: center; justify-content: space-between; gap: .5rem; margin-bottom: .4rem; }
 .cal-head button { border: 1px solid var(--line); background: #fff; border-radius: 4px; padding: 0 .5rem; font-size: 1.1rem; cursor: pointer; }
 #cal-title.cal-title { flex: 1; font-size: .9rem; font-weight: 600; padding: .3rem .5rem; }
-.cal-picker { border: 1px solid var(--line); border-radius: 6px; padding: .5rem; margin-bottom: .4rem; background: #fafafa; }
-.cal-picker-year { display: flex; align-items: center; justify-content: space-between; margin-bottom: .35rem; }
-.cal-picker-year button { border: 1px solid var(--line); background: #fff; border-radius: 4px; padding: 0 .5rem; cursor: pointer; }
-.pick-months { display: grid; grid-template-columns: repeat(4, 1fr); gap: 3px; }
-.pick-month { border: 1px solid var(--line); background: #fff; border-radius: 4px; padding: .25rem 0; font-size: .75rem; cursor: pointer; }
+.cal-modal { border: 1px solid var(--line); border-radius: 8px; padding: 1rem; }
+.cal-modal::backdrop { background: rgba(0,0,0,.35); }
+.cal-modal-form { display: flex; flex-direction: column; gap: .7rem; min-width: 240px; }
+.cal-modal-form h3 { margin: 0; }
+.cal-modal-form select { width: 100%; }
+.cal-modal-actions { display: flex; justify-content: flex-end; gap: .5rem; margin-top: .3rem; }
+.cal-modal-actions button { border: 1px solid var(--line); background: #fff; border-radius: 6px; padding: .35rem .8rem; cursor: pointer; }
+.cal-modal-actions button.primary { background: var(--proxy); color: #fff; border-color: var(--proxy); }
 .swatch { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: .3rem; vertical-align: middle; }
 .zoom-ind { margin: .6rem 0 .2rem; }
 .brush { position: relative; height: 26px; background: #ececec; border-radius: 4px; touch-action: none; cursor: grab; }
@@ -34,6 +37,7 @@ h1 { margin: 0; }
 label { display: flex; flex-direction: column; font-size: .85rem; color: var(--muted); gap: .25rem; }
 select, input { padding: .35rem; font-size: 1rem; }
 .calc-result { font-size: 1.6rem; font-weight: 600; }
+.asof-inline { font-size: .5em; font-weight: 400; color: var(--muted); }
 .provenance { color: var(--muted); font-size: .85rem; }
 table { border-collapse: collapse; width: 100%; margin-bottom: 1rem; }
 th, td { border: 1px solid var(--line); padding: .35rem .5rem; text-align: right; font-variant-numeric: tabular-nums; }

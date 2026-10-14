@@ -9,7 +9,7 @@
 <body>
   <header>
     <h1>exchange_rate</h1>
-    <p class="sub">Iran free-market rates. Sources kept separate. Exact, proxy, and estimate are always labeled.</p>
+    <p class="sub">Iran free-market rates.</p>
   </header>
 
   <section id="calculator" class="card">
@@ -18,19 +18,10 @@
       <div class="calendar-wrap">
         <div class="cal-head">
           <button id="cal-prev" type="button" aria-label="previous month">&lsaquo;</button>
-          <button id="cal-title" type="button" class="cal-title"></button>
+          <button id="cal-title" type="button" class="cal-title" aria-haspopup="dialog"></button>
           <button id="cal-next" type="button" aria-label="next month">&rsaquo;</button>
         </div>
-        <div id="cal-picker" class="cal-picker hidden">
-          <div class="cal-picker-year">
-            <button id="pick-prev-year" type="button" aria-label="previous year">&lsaquo;</button>
-            <span id="pick-year"></span>
-            <button id="pick-next-year" type="button" aria-label="next year">&rsaquo;</button>
-          </div>
-          <div id="pick-months" class="pick-months"></div>
-        </div>
         <div id="cal-grid" class="cal-grid"></div>
-        <p class="sub">selected: <span id="cal-selected"></span></p>
       </div>
       <div class="calc-right">
         <div class="calc-grid">
@@ -84,6 +75,18 @@
       </section>
     </main>
   </div>
+
+  <dialog id="cal-modal" class="cal-modal">
+    <form method="dialog" class="cal-modal-form">
+      <h3>Select month and year</h3>
+      <label>Month <select id="pick-month"></select></label>
+      <label>Year <select id="pick-year"></select></label>
+      <div class="cal-modal-actions">
+        <button value="cancel" type="submit">Cancel</button>
+        <button value="apply" type="submit" class="primary">Apply</button>
+      </div>
+    </form>
+  </dialog>
 
   <div id="modal" class="modal hidden"><div class="modal-body"><button id="modal-close">close</button><div id="modal-content"></div></div></div>
 
