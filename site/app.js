@@ -1,15 +1,119 @@
 const UNIT = { toman: 10, rial: 1 }
 
 let INDEX = null
-let SNAPSHOT = null
-let SNAPSHOTS = {}   // date -> snapshot (loaded lazily for the tables and converter)
-let HISTORY = null   // consolidated daily series for the chart
+let SNAPSHOTS = {}    // date -> snapshot (loaded lazily)
+let HISTORY = null    // consolidated daily series for the chart
 let UNIT_DIVISOR = UNIT.toman
+let CURRENT_DATE = "" // date selected in the calendar (ISO yyyy-mm-dd)
+let DAY = []          // merged records for CURRENT_DATE (snapshot + history)
+let CAL = "gregorian" // display calendar: "gregorian" or "jalali"
+let VIEW_ANCHOR = ""  // ISO date anchoring the month shown in the calendar
 
 async function getJson(url) {
   const r = await fetch(url)
   if (!r.ok) throw new Error(`${url}: ${r.status}`)
   return r.json()
+}
+
+/* --- Jalali (Persian) calendar, algorithm from jalaali-js (MIT) --- */
+function jdiv(a, b) { return ~~(a / b) }
+function jmod(a, b) { return a - ~~(a / b) * b }
+const JALAALI_BREAKS = [-61, 9, 38, 199, 426, 686, 756, 818, 1111, 1181, 1210, 1635, 2060, 2097, 2192, 2262, 2324, 2394, 2456, 3178]
+
+function jalCal(jy, withoutLeap) {
+  const bl = JALAALI_BREAKS.length
+  const gy = jy + 621
+  let leapJ = -14
+  let jp = JALAALI_BREAKS[0]
+  let jm, jump, leap, leapG, march, n
+  if (jy < jp || jy >= JALAALI_BREAKS[bl - 1]) throw new Error("invalid jalali year " + jy)
+  for (let i = 1; i < bl; i += 1) {
+    jm = JALAALI_BREAKS[i]
+    jump = jm - jp
+    if (jy < jm) break
+    leapJ = leapJ + jdiv(jump, 33) * 8 + jdiv(jmod(jump, 33), 4)
+    jp = jm
+  }
+  n = jy - jp
+  leapJ = leapJ + jdiv(n, 33) * 8 + jdiv(jmod(n, 33) + 3, 4)
+  if (jmod(jump, 33) === 4 && jump - n === 4) leapJ += 1
+  leapG = jdiv(gy, 4) - jdiv((jdiv(gy, 100) + 1) * 3, 4) - 150
+  march = 20 + leapJ - leapG
+  if (!withoutLeap) {
+    if (jump - n < 6) n = n - jump + jdiv(jump + 4, 33) * 33
+    leap = jmod(jmod(n + 1, 33) - 1, 4)
+    if (leap === -1) leap = 4
+  }
+  return { leap, gy, march }
+}
+
+function jG2D(gy, gm, gd) {
+  let d = jdiv((gy + jdiv(gm - 8, 6) + 100100) * 1461, 4) + jdiv(153 * jmod(gm + 9, 12) + 2, 5) + gd - 34840408
+  d = d - jdiv(jdiv(gy + 100100 + jdiv(gm - 8, 6), 100) * 3, 4) + 752
+  return d
+}
+
+function jD2G(jdn) {
+  let j = 4 * jdn + 139361631
+  j = j + jdiv(jdiv(4 * jdn + 183187720, 146097) * 3, 4) * 4 - 3908
+  const i = jdiv(jmod(j, 1461), 4) * 5 + 308
+  const gd = jdiv(jmod(i, 153), 5) + 1
+  const gm = jmod(jdiv(i, 153), 12) + 1
+  const gy = jdiv(j, 1461) - 100100 + jdiv(8 - gm, 6)
+  return { gy, gm, gd }
+}
+
+function jJ2D(jy, jm, jd) {
+  const r = jalCal(jy, true)
+  return jG2D(r.gy, 3, r.march) + (jm - 1) * 31 - jdiv(jm, 7) * (jm - 7) + jd - 1
+}
+
+function jD2J(jdn) {
+  const gy = jD2G(jdn).gy
+  let jy = gy - 621
+  const r = jalCal(jy, false)
+  const jdn1f = jG2D(gy, 3, r.march)
+  let k = jdn - jdn1f
+  let jd, jm
+  if (k >= 0) {
+    if (k <= 185) { jm = 1 + jdiv(k, 31); jd = jmod(k, 31) + 1; return { jy, jm, jd } }
+    k -= 186
+  } else {
+    jy -= 1
+    k += 179
+    if (r.leap === 1) k += 1
+  }
+  jm = 7 + jdiv(k, 30)
+  jd = jmod(k, 30) + 1
+  return { jy, jm, jd }
+}
+
+function isoToJalali(iso) {
+  const [y, m, d] = iso.split("-").map(Number)
+  return jD2J(jG2D(y, m, d))
+}
+
+function jalaliToIso(jy, jm, jd) {
+  const g = jD2G(jJ2D(jy, jm, jd))
+  return `${g.gy}-${String(g.gm).padStart(2, "0")}-${String(g.gd).padStart(2, "0")}`
+}
+
+function jalaliMonthLength(jy, jm) {
+  if (jm <= 6) return 31
+  if (jm <= 11) return 30
+  return jalCal(jy, false).leap === 0 ? 30 : 29
+}
+
+const GREG_MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"]
+const JALALI_MONTHS = ["Farvardin", "Ordibehesht", "Khordad", "Tir", "Mordad", "Shahrivar", "Mehr", "Aban", "Azar", "Dey", "Bahman", "Esfand"]
+const ISO_RE = /^\d{4}-\d{2}-\d{2}$/
+
+function fmtDate(iso) {
+  if (!iso) return "-"
+  if (!ISO_RE.test(iso)) return iso
+  if (CAL === "gregorian") return iso
+  const j = isoToJalali(iso)
+  return `${j.jy}/${String(j.jm).padStart(2, "0")}/${String(j.jd).padStart(2, "0")}`
 }
 
 function fmt(rial) {
@@ -29,12 +133,11 @@ function esc(s) {
 
 function unitName() { return UNIT_DIVISOR === UNIT.toman ? "toman" : "rial" }
 
-function records() { return SNAPSHOT ? SNAPSHOT.records : [] }
+function records() { return DAY }
 
 function sideValue(rec, side) {
-  // returns the value for a leg in RIAL, or the ratio for a non-IRR pair (globalfx)
   if (!rec) return null
-  if (rec.pair_to !== "IRR") return rec.value  // direct non-IRR pair, e.g. USD/CAD
+  if (rec.pair_to !== "IRR") return rec.value
   if (side === "mid") {
     if (rec.buy_rial != null && rec.sell_rial != null) return (rec.buy_rial + rec.sell_rial) / 2
     if (rec.price_rial != null) return rec.price_rial
@@ -46,7 +149,6 @@ function sideValue(rec, side) {
 }
 
 function legIrr(cur, sourceId, side) {
-  // IRR per 1 unit of cur, or null
   if (cur === "IRR") return 1
   if (sourceId === "average") { return averageLeg(cur, side) }
   const rec = records().find(r =>
@@ -66,23 +168,20 @@ function averageLeg(cur, side) {
 }
 
 function directPair(from, to, sourceId, side) {
-  // a direct non-IRR pair published by the chosen source (globalfx USD/CAD).
-  // globalfx stores `value` as USD per CAD (from-per-to), so the to-per-from rate is its reciprocal.
   const rec = records().find(r => r.source_id === sourceId && r.pair_from === from && r.pair_to === to)
   if (rec && rec.pair_to !== "IRR" && rec.value) return 1 / rec.value
   return null
 }
 
 function rate(from, to, sourceId, side) {
-  // units of `to` per 1 unit of `from`, or null
   if (from === to) return 1
 
   if (sourceId === "estimate") {
     const cadRec = records().find(x => x.source_id === "cad_estimate")
     const gfxRec = records().find(x => x.source_id === "globalfx")
-    const cadIrr = sideValue(cadRec, side)                 // IRR per CAD
-    const usdIrr = averageLeg("USD", side)                 // IRR per USD (avg of enabled cash sources)
-    const gfx = gfxRec ? gfxRec.value : null               // USD per CAD (stored value)
+    const cadIrr = sideValue(cadRec, side)
+    const usdIrr = averageLeg("USD", side)
+    const gfx = gfxRec ? gfxRec.value : null
     if (from === "CAD" && to === "IRR") return cadIrr
     if (from === "IRR" && to === "CAD") return cadIrr != null ? 1 / cadIrr : null
     if (from === "USD" && to === "IRR") return usdIrr
@@ -99,8 +198,8 @@ function rate(from, to, sourceId, side) {
   }
 
   if (sourceId === "average") {
-    const a = legIrr(from, "average", side)   // IRR per from (1 when from === "IRR")
-    const b = legIrr(to, "average", side)     // IRR per to   (1 when to === "IRR")
+    const a = legIrr(from, "average", side)
+    const b = legIrr(to, "average", side)
     if (a == null || b == null) return null
     return a / b
   }
@@ -140,11 +239,193 @@ function enabledCurrencies() { return checkedValues("currency-toggles", historyC
 function enabledSides() { return checkedValues("side-toggles", ["buy", "sell", "mid"]) }
 function enabledSourceIds() { return checkedValues("source-toggles", allSourceIds()) }
 
+/* --- date availability and the daily record view --- */
+function historyAvail(sourceId) {
+  const s = new Set()
+  if (!HISTORY || !HISTORY.sources) return s
+  for (const series of Object.values(HISTORY.sources)) {
+    if (series.source_id !== sourceId) continue
+    for (const d of Object.keys(series.points)) s.add(d)
+  }
+  return s
+}
+
+function snapshotAvail(sourceId) {
+  return (INDEX && INDEX.source_dates && INDEX.source_dates[sourceId]) ? INDEX.source_dates[sourceId] : []
+}
+
+function availability(sourceId) {
+  const s = new Set()
+  if (sourceId === "average") {
+    for (const id of allSourceIds()) for (const d of availability(id)) s.add(d)
+    return s
+  }
+  if (sourceId === "estimate") {
+    for (const id of ["cad_estimate", "globalfx"]) {
+      for (const d of historyAvail(id)) s.add(d)
+      for (const d of snapshotAvail(id)) s.add(d)
+    }
+    return s
+  }
+  for (const d of historyAvail(sourceId)) s.add(d)
+  for (const d of snapshotAvail(sourceId)) s.add(d)
+  return s
+}
+
+function latestDate() {
+  if (INDEX && INDEX.latest) return INDEX.latest
+  const all = HISTORY ? historyDates() : []
+  return all.length ? all[all.length - 1] : ""
+}
+
+function seriesPoint(sourceId, pair, date) {
+  if (!HISTORY) return null
+  const s = HISTORY.sources[sourceId + ":" + pair]
+  return s ? (s.points[date] || null) : null
+}
+
+function cadInputs(date) {
+  const inputs = []
+  const usd = seriesPoint("bonbast_archive", "USD", date)
+  const gfx = seriesPoint("globalfx", "USD", date)
+  if (usd && usd[1] != null) inputs.push({ source_id: "bonbast_archive", value: usd[1], kind: "exact", verify_url: "https://bonbast.com/graph/usd", unit: "rial", leg: "sell" })
+  if (usd && usd[0] != null && usd[0] !== usd[1]) inputs.push({ source_id: "bonbast_archive", value: usd[0], kind: "exact", verify_url: "https://bonbast.com/graph/usd", unit: "rial", leg: "buy" })
+  if (gfx && gfx[2] != null) inputs.push({ source_id: "globalfx", value: gfx[2], kind: "exact", verify_url: "https://api.frankfurter.dev/v1/latest?base=USD&symbols=CAD", unit: "ratio" })
+  return inputs
+}
+
+async function loadDay(date) {
+  CURRENT_DATE = date || ""
+  const recs = []
+  if (date && INDEX && (INDEX.dates || []).includes(date)) {
+    if (!(date in SNAPSHOTS)) {
+      try { SNAPSHOTS[date] = await getJson(`./data/snapshots/${date}.json`) }
+      catch (_) { SNAPSHOTS[date] = null }
+    }
+    const snap = SNAPSHOTS[date]
+    if (snap) for (const r of (snap.records || [])) recs.push(r)
+  }
+  const seen = new Set(recs.map(r => r.source_id + "|" + r.pair_from))
+  if (date && HISTORY && HISTORY.sources) {
+    for (const series of Object.values(HISTORY.sources)) {
+      const p = series.points[date]
+      if (!p) continue
+      if (series.pair_to !== "IRR") {
+        if (series.source_id === "globalfx" && !seen.has("globalfx|USD")) {
+          recs.push({ source_id: "globalfx", kind: "exact", pair_from: "USD", pair_to: "CAD", value: 1 / p[2], as_of: date, verify_url: series.verify_url, status: "ok", raw: {} })
+          seen.add("globalfx|USD")
+        }
+        continue
+      }
+      const key = series.source_id + "|" + series.pair_from
+      if (seen.has(key)) continue
+      const rec = {
+        source_id: series.source_id, kind: series.kind, pair_from: series.pair_from, pair_to: "IRR",
+        buy_rial: p[0], sell_rial: p[1], price_rial: p[2], as_of: date,
+        verify_url: series.verify_url, source_url: series.verify_url, status: "ok", raw: {},
+      }
+      if (series.source_id === "cad_estimate") {
+        rec.formula = "sell: IRR_per_CAD = USD_sell / CAD_per_USD ; buy: IRR_per_CAD = USD_buy / CAD_per_USD"
+        rec.inputs = cadInputs(date)
+      }
+      recs.push(rec)
+      seen.add(key)
+    }
+  }
+  DAY = recs
+}
+
+/* --- calendar --- */
+function currentSourceId() { return document.getElementById("calc-source").value }
+function allDatesFor(sourceId) {
+  const s = new Set(availability(sourceId))
+  for (const d of (INDEX.dates || [])) s.add(d)
+  return [...s].sort()
+}
+
+function renderCalendar() {
+  const grid = document.getElementById("cal-grid")
+  const src = currentSourceId()
+  const avail = availability(src)
+  if (!VIEW_ANCHOR) VIEW_ANCHOR = CURRENT_DATE || latestDate() || "2026-01-01"
+  const days = []
+  let title = ""
+  let dowLabels
+  let firstIso
+
+  if (CAL === "gregorian") {
+    const y = +VIEW_ANCHOR.slice(0, 4), m = +VIEW_ANCHOR.slice(5, 7)
+    title = `${GREG_MONTHS[m - 1]} ${y}`
+    const dim = new Date(Date.UTC(y, m, 0)).getUTCDate()
+    firstIso = `${y}-${String(m).padStart(2, "0")}-01`
+    for (let d = 1; d <= dim; d++) days.push(`${y}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`)
+    dowLabels = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
+  } else {
+    const j = isoToJalali(VIEW_ANCHOR)
+    title = `${JALALI_MONTHS[j.jm - 1]} ${j.jy}`
+    const jmLen = jalaliMonthLength(j.jy, j.jm)
+    firstIso = jalaliToIso(j.jy, j.jm, 1)
+    for (let d = 1; d <= jmLen; d++) days.push(jalaliToIso(j.jy, j.jm, d))
+    dowLabels = ["Sat", "Sun", "Mon", "Tue", "Wed", "Thu", "Fri"]
+  }
+
+  const rawDow = new Date(firstIso + "T00:00:00Z").getUTCDay() // 0 = Sun
+  const pad = (CAL === "gregorian") ? rawDow : (rawDow + 1) % 7 // Sat = 0 for jalali
+
+  document.getElementById("cal-month").textContent = title
+  document.getElementById("cal-selected").textContent = CURRENT_DATE ? fmtDate(CURRENT_DATE) : "none"
+
+  let html = dowLabels.map(d => `<span class="cal-dow">${d}</span>`).join("")
+  for (let i = 0; i < pad; i++) html += `<span class="cal-empty"></span>`
+  for (const iso of days) {
+    const on = avail.has(iso)
+    const sel = iso === CURRENT_DATE
+    html += `<button type="button" class="cal-day${on ? "" : " off"}${sel ? " sel" : ""}" data-date="${iso}" ${on ? "" : "disabled"}>${fmtDate(iso).split("/").pop()}</button>`
+  }
+  grid.innerHTML = html
+  grid.querySelectorAll("button.cal-day:not([disabled])").forEach(b =>
+    b.addEventListener("click", () => selectDate(b.dataset.date)))
+}
+
+function shiftMonth(delta) {
+  if (!VIEW_ANCHOR) return
+  if (CAL === "gregorian") {
+    let y = +VIEW_ANCHOR.slice(0, 4), m = +VIEW_ANCHOR.slice(5, 7) + delta
+    while (m < 1) { m += 12; y -= 1 }
+    while (m > 12) { m -= 12; y += 1 }
+    VIEW_ANCHOR = `${y}-${String(m).padStart(2, "0")}-01`
+  } else {
+    const j = isoToJalali(VIEW_ANCHOR)
+    let jy = j.jy, jm = j.jm + delta
+    while (jm < 1) { jm += 12; jy -= 1 }
+    while (jm > 12) { jm -= 12; jy += 1 }
+    VIEW_ANCHOR = jalaliToIso(jy, jm, 1)
+  }
+  renderCalendar()
+}
+
+async function selectDate(date) {
+  await loadDay(date)
+  renderCalendar()
+  convert()
+  renderTables()
+}
+
+function ensureDateAvailable() {
+  const avail = availability(currentSourceId())
+  if (!CURRENT_DATE || !avail.has(CURRENT_DATE)) {
+    const sorted = [...avail].sort()
+    CURRENT_DATE = sorted.length ? sorted[sorted.length - 1] : ""
+  }
+  VIEW_ANCHOR = CURRENT_DATE || VIEW_ANCHOR
+}
+
+/* --- calculator --- */
 function provLine(r) {
   const verify = r.verify_url
     ? ` &middot; <a href="${esc(r.verify_url)}" target="_blank" rel="noopener">verify</a>`
     : ""
-  const asof = r.as_of ? ` &middot; as of ${esc(r.as_of)}` : ""
+  const asof = r.as_of ? ` &middot; as of ${esc(fmtDate(r.as_of))}` : ""
   return `${badge(r)}${verify}${asof}`
 }
 
@@ -193,7 +474,6 @@ function convertProvenance(from, to, sourceId) {
 }
 
 function convert() {
-  const date = document.getElementById("calc-date").value
   const from = document.getElementById("calc-from").value
   const to = document.getElementById("calc-to").value
   const sourceId = document.getElementById("calc-source").value
@@ -203,7 +483,7 @@ function convert() {
   const prov = document.getElementById("calc-provenance")
   prov.innerHTML = ""
   out.className = "calc-result"
-  if (!SNAPSHOT) { out.textContent = `no data for this date (${date})`; out.className = "calc-result no-data"; return }
+  if (!DAY.length) { out.textContent = `no data for ${CURRENT_DATE ? fmtDate(CURRENT_DATE) : "this date"}`; out.className = "calc-result no-data"; return }
   const r = rate(from, to, sourceId, side)
   if (r == null) { out.textContent = "no rate for that direction from this source"; out.className = "calc-result no-data"; return }
   let amt = amount
@@ -215,27 +495,11 @@ function convert() {
   prov.innerHTML = convertProvenance(from, to, sourceId)
 }
 
-function fillSelectors() {
-  const dateSel = document.getElementById("calc-date")
-  dateSel.innerHTML = (INDEX.dates || []).map(d => `<option>${d}</option>`).join("")
-  dateSel.value = INDEX.latest || ""
+function fillSourceSelector() {
   const srcSel = document.getElementById("calc-source")
   const opts = ['<option value="estimate">estimate (derived)</option>', '<option value="average">average of enabled</option>']
   for (const s of INDEX.sources) opts.push(`<option value="${s.source_id}">${s.label}</option>`)
   srcSel.innerHTML = opts.join("")
-}
-
-async function loadDate(date) {
-  if (!date) { SNAPSHOT = null; return }
-  if (!SNAPSHOTS[date]) {
-    try {
-      SNAPSHOTS[date] = await getJson(`./data/snapshots/${date}.json`)
-    } catch (err) {
-      SNAPSHOT = null
-      throw err
-    }
-  }
-  SNAPSHOT = SNAPSHOTS[date]
 }
 
 async function loadHistory() {
@@ -246,11 +510,24 @@ async function loadHistory() {
   }
 }
 
+/* --- chart --- */
 const PALETTE = ["#00548a", "#136f2f", "#8a5a00", "#8a0050", "#005f5f", "#5a008a", "#7a2e00", "#2e6f7a", "#6f136f"]
 let mainChart = null
+let savedX = null
+
+function defaultRange(dates) {
+  // last 4 weeks of available data, as a category-index range
+  if (!dates.length) return null
+  const last = dates[dates.length - 1]
+  const cut = new Date(last + "T00:00:00Z")
+  cut.setUTCDate(cut.getUTCDate() - 27)
+  const cutIso = cut.toISOString().slice(0, 10)
+  const idx = dates.findIndex(d => d >= cutIso)
+  if (idx <= 0) return null
+  return { min: idx, max: dates.length - 1 }
+}
 
 function shade(hex, pct) {
-  // pct in [-1,1]; negative darkens, positive lightens
   const n = parseInt(hex.slice(1), 16)
   let r = (n >> 16) & 255, g = (n >> 8) & 255, b = n & 255
   if (pct < 0) { const k = 1 + pct; r = Math.round(r * k); g = Math.round(g * k); b = Math.round(b * k) }
@@ -271,12 +548,14 @@ function historySourceIds() {
 }
 
 function seriesVisible(series, cur, srcs) {
-  return cur.includes(currencyOfSeries(series)) && srcs.includes(series.source_id)
+  return series.pair_to === "IRR" && cur.includes(currencyOfSeries(series)) && srcs.includes(series.source_id)
 }
 
-function buildMainChart() {
-  const canvas = document.getElementById("main-chart")
-  if (!HISTORY || !HISTORY.sources) return
+function chartLabels(dates) {
+  return dates.map(d => (CAL === "gregorian" ? d : fmtDate(d)))
+}
+
+function computeChartData() {
   const dates = historyDates()
   const cur = enabledCurrencies()
   const sides = enabledSides()
@@ -313,31 +592,55 @@ function buildMainChart() {
   if (document.getElementById("toggle-avg").checked && avg.some(x => x != null)) {
     datasets.push({ label: "average (estimate)", data: avg, borderColor: "#000", borderDash: [6, 4], spanGaps: false, pointRadius: 0 })
   }
-  if (mainChart) mainChart.destroy()
-  mainChart = new Chart(canvas, {
-    type: "line",
-    data: { labels: dates, datasets },
-    options: {
-      responsive: true,
-      interaction: { mode: "index", intersect: false },
-      scales: {
-        x: { ticks: { maxTicksLimit: 12, autoSkip: true } },
-        y: {},
-      },
-      plugins: {
-        legend: { labels: { boxWidth: 12 } },
+  return { dates, datasets }
+}
+
+function chartOptions() {
+  return {
+    responsive: true,
+    interaction: { mode: "index", intersect: false },
+    scales: {
+      x: { ticks: { maxTicksLimit: 12, autoSkip: true } },
+      y: {},
+    },
+    plugins: {
+      legend: { labels: { boxWidth: 12 } },
+      zoom: {
+        pan: { enabled: true, mode: "x", onPan: ({ chart }) => rescaleY(chart) },
         zoom: {
-          pan: { enabled: true, mode: "x", onPan: ({ chart }) => rescaleY(chart) },
-          zoom: {
-            wheel: { enabled: true },
-            pinch: { enabled: true },
-            mode: "x",
-            onZoom: ({ chart }) => rescaleY(chart),
-          },
+          wheel: { enabled: true },
+          pinch: { enabled: true },
+          mode: "x",
+          onZoom: ({ chart }) => rescaleY(chart),
         },
       },
     },
-  })
+  }
+}
+
+function buildMainChart() {
+  const canvas = document.getElementById("main-chart")
+  if (!HISTORY || !HISTORY.sources) return
+  const { dates, datasets } = computeChartData()
+  if (mainChart) mainChart.destroy()
+  mainChart = new Chart(canvas, { type: "line", data: { labels: chartLabels(dates), datasets }, options: chartOptions() })
+  const range = (savedX && savedX.min != null) ? savedX : defaultRange(dates)
+  if (range) {
+    mainChart.options.scales.x.min = range.min
+    mainChart.options.scales.x.max = range.max
+    mainChart.update("none")
+    rescaleY(mainChart)
+  }
+}
+
+function updateChart() {
+  if (!HISTORY || !HISTORY.sources) return
+  if (!mainChart) { buildMainChart(); return }
+  const { dates, datasets } = computeChartData()
+  mainChart.data.labels = chartLabels(dates)
+  mainChart.data.datasets = datasets
+  mainChart.update("none")
+  rescaleY(mainChart)
 }
 
 let resetting = false
@@ -366,9 +669,12 @@ function rescaleY(chart) {
 
 function resetZoom() {
   if (!mainChart) return
+  savedX = null
   resetting = true
   mainChart.resetZoom()
-  if (mainChart.options.scales && mainChart.options.scales.y) {
+  if (mainChart.options.scales) {
+    delete mainChart.options.scales.x.min
+    delete mainChart.options.scales.x.max
     delete mainChart.options.scales.y.min
     delete mainChart.options.scales.y.max
   }
@@ -384,35 +690,55 @@ function buildToggles() {
   sideHost.innerHTML = ["buy", "sell", "mid"].map(s => `<label><input type="checkbox" value="${s}" checked> ${s}</label>`).join("")
   srcHost.innerHTML = allSourceIds().map(id => `<label><input type="checkbox" value="${id}" checked> ${id}</label>`).join("")
   for (const host of [curHost, sideHost, srcHost]) {
-    host.querySelectorAll("input").forEach(i => i.addEventListener("change", buildMainChart))
+    host.querySelectorAll("input").forEach(i => i.addEventListener("change", updateChart))
   }
 }
 
-function rebuildCharts() { buildMainChart() }
+function rebuildCharts() { updateChart() }
+
+function updateCalToggleLabel() {
+  document.getElementById("cal-toggle").textContent = "calendar: " + (CAL === "gregorian" ? "Gregorian" : "Jalali (Shamsi)")
+}
 
 async function boot() {
   INDEX = await getJson("./data/index.json")
-  fillSelectors()
-  document.getElementById("calc-date").addEventListener("change", async e => {
-    try { await loadDate(e.target.value) } catch (_) { SNAPSHOT = null }
-    convert()
-    renderTables()
-  })
-  for (const id of ["calc-from", "calc-to", "calc-source", "calc-side", "calc-amount"]) {
-    document.getElementById(id).addEventListener("input", convert)
-  }
-  await loadDate(INDEX.latest)
-  convert()
-  renderTables()
+  fillSourceSelector()
   await loadHistory()
   buildToggles()
-  rebuildCharts()
-  document.getElementById("toggle-avg").addEventListener("change", rebuildCharts)
+
+  document.getElementById("calc-source").addEventListener("change", async () => {
+    ensureDateAvailable()
+    renderCalendar()
+    await loadDay(CURRENT_DATE)
+    convert(); renderTables()
+  })
+  for (const id of ["calc-from", "calc-to", "calc-side", "calc-amount"]) {
+    document.getElementById(id).addEventListener("input", convert)
+  }
+  document.getElementById("calc-source").addEventListener("change", convert)
+
+  document.getElementById("toggle-avg").addEventListener("change", updateChart)
   document.getElementById("unit").addEventListener("change", e => {
     UNIT_DIVISOR = UNIT[e.target.value]
-    convert(); renderTables(); rebuildCharts()
+    convert(); renderTables(); updateChart()
   })
   document.getElementById("reset-zoom").addEventListener("click", resetZoom)
+  document.getElementById("cal-prev").addEventListener("click", () => shiftMonth(-1))
+  document.getElementById("cal-next").addEventListener("click", () => shiftMonth(1))
+  document.getElementById("cal-toggle").addEventListener("click", () => {
+    CAL = CAL === "gregorian" ? "jalali" : "gregorian"
+    updateCalToggleLabel()
+    renderCalendar()
+    convert(); renderTables(); updateChart()
+  })
+
+  ensureDateAvailable()
+  await loadDay(CURRENT_DATE)
+  renderCalendar()
+  convert()
+  renderTables()
+  rebuildCharts()
+  updateCalToggleLabel()
 }
 
 function badge(r) {
@@ -449,8 +775,8 @@ function midText(r) {
 
 function renderTables() {
   const body = document.getElementById("tables-body")
-  if (!SNAPSHOT) { body.innerHTML = `<p class="no-data">no data for this date</p>`; return }
-  const rows = records()
+  if (!DAY.length) { body.innerHTML = `<p class="no-data">no data for this date</p>`; return }
+  const rows = DAY
     .filter(r => r.pair_to === "IRR")
     .map(r => `
       <tr>
@@ -461,14 +787,14 @@ function renderTables() {
         <td>${midText(r)}</td>
         <td>${fmt(r.price_rial)}</td>
         <td>${esc(unitName())}</td>
-        <td>${r.as_of ? esc(r.as_of) : "-"}</td>
+        <td>${esc(fmtDate(r.as_of || CURRENT_DATE))}</td>
         <td>${esc(r.status)}</td>
         <td><a href="${esc(r.source_url)}" target="_blank" rel="noopener">source</a>
             &middot; <a href="${esc(r.verify_url)}" target="_blank" rel="noopener">verify</a></td>
       </tr>`).join("")
-  const asofs = records().map(r => r.as_of).filter(Boolean).sort()
-  const asof = asofs.length ? asofs[asofs.length - 1] : "-"
-  const head = `<p class="asof">date ${esc(SNAPSHOT.date || "")} &middot; generated ${esc(SNAPSHOT.generated_at || "-")} &middot; latest as-of ${esc(asof)}</p>`
+  const asofs = DAY.map(r => r.as_of).filter(Boolean).sort()
+  const asof = asofs.length ? asofs[asofs.length - 1] : CURRENT_DATE
+  const head = `<p class="asof">date ${esc(fmtDate(CURRENT_DATE))} &middot; latest as-of ${esc(fmtDate(asof))}</p>`
   const table = `<table>
     <thead><tr><th>source</th><th>pair</th><th>buy</th><th>sell</th><th>mid</th><th>price</th><th>unit</th><th>as-of</th><th>status</th><th>links</th></tr></thead>
     <tbody>${rows}</tbody></table>`

@@ -8,28 +8,43 @@
 </head>
 <body>
   <header>
-    <h1>exchange_rate</h1>
+    <div class="head-row">
+      <h1>exchange_rate</h1>
+      <button id="cal-toggle" type="button">calendar: Gregorian</button>
+    </div>
     <p class="sub">Iran free-market rates. Sources kept separate. Exact, proxy, and estimate are always labeled.</p>
   </header>
 
   <section id="calculator" class="card">
     <h2>Converter</h2>
-    <div class="calc-grid">
-      <label>Date <select id="calc-date"></select></label>
-      <label>From
-        <select id="calc-from"><option>USD</option><option>CAD</option><option>IRR</option></select>
-      </label>
-      <label>To
-        <select id="calc-to"><option>IRR</option><option>USD</option><option>CAD</option></select>
-      </label>
-      <label>Rate source <select id="calc-source"></select></label>
-      <label>Rate side
-        <select id="calc-side"><option value="sell">sell</option><option value="buy">buy</option><option value="mid">mid</option></select>
-      </label>
-      <label>Amount <input id="calc-amount" type="number" value="1"></label>
+    <div class="calc-flex">
+      <div class="calendar-wrap">
+        <div class="cal-head">
+          <button id="cal-prev" type="button" aria-label="previous month">&lsaquo;</button>
+          <span id="cal-month"></span>
+          <button id="cal-next" type="button" aria-label="next month">&rsaquo;</button>
+        </div>
+        <div id="cal-grid" class="cal-grid"></div>
+        <p class="sub">selected: <span id="cal-selected"></span></p>
+      </div>
+      <div class="calc-right">
+        <div class="calc-grid">
+          <label>From
+            <select id="calc-from"><option>USD</option><option>CAD</option><option>IRR</option></select>
+          </label>
+          <label>To
+            <select id="calc-to"><option>IRR</option><option>USD</option><option>CAD</option></select>
+          </label>
+          <label>Rate source <select id="calc-source"></select></label>
+          <label>Rate side
+            <select id="calc-side"><option value="sell">sell</option><option value="buy">buy</option><option value="mid">mid</option></select>
+          </label>
+          <label>Amount <input id="calc-amount" type="number" value="1"></label>
+        </div>
+        <p id="calc-result" class="calc-result">-</p>
+        <p id="calc-provenance" class="provenance"></p>
+      </div>
     </div>
-    <p id="calc-result" class="calc-result">-</p>
-    <p id="calc-provenance" class="provenance"></p>
   </section>
 
   <section id="tables" class="card"><h2>Sources</h2><div id="tables-body"></div></section>
