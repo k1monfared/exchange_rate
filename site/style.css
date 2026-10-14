@@ -4,6 +4,8 @@ body { font-family: system-ui, sans-serif; color: var(--fg); margin: 0 auto; max
 h1 { margin: 0; }
 .head-row { display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
 #cal-toggle { border: 1px solid var(--line); background: #fff; border-radius: 6px; padding: .35rem .7rem; font-size: .85rem; cursor: pointer; }
+.cal-type { margin-top: .35rem; }
+.cal-type #cal-toggle { width: 100%; }
 .sub { color: var(--muted); }
 .card { border: 1px solid var(--line); border-radius: 8px; padding: 1rem; margin: 1rem 0; }
 .calc-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: .75rem; }
