@@ -1,0 +1,72 @@
+{
+  "dates": [
+    "2026-10-14"
+  ],
+  "generated_at": "2026-10-14T08:00:26+03:30",
+  "latest": "2026-10-14",
+  "sources": [
+    {
+      "kind": "exact",
+      "label": "Nerkhsanj",
+      "pair": "USD,CAD/IRR",
+      "source_id": "nerkhsanj",
+      "verify_url": "https://nerkh.jahankhahan.shop/developers/en"
+    },
+    {
+      "kind": "exact",
+      "label": "Bonbast (archive)",
+      "pair": "USD,CAD/IRR",
+      "source_id": "bonbast_archive",
+      "verify_url": "https://bonbast.com/graph/cad"
+    },
+    {
+      "kind": "proxy",
+      "label": "Tetherland (USDT proxy)",
+      "pair": "USDT/IRR",
+      "source_id": "tetherland",
+      "verify_url": "https://tetherland.com/"
+    },
+    {
+      "kind": "proxy",
+      "label": "Nobitex (USDT proxy)",
+      "pair": "USDT/IRR",
+      "source_id": "nobitex",
+      "verify_url": "https://nobitex.ir/markets/usdt-rls"
+    },
+    {
+      "kind": "proxy",
+      "label": "Ramzinex (USDT proxy)",
+      "pair": "USDT/IRR",
+      "source_id": "ramzinex",
+      "verify_url": "https://ramzinex.com/exchange/usdt-irr"
+    },
+    {
+      "kind": "proxy",
+      "label": "Wallex (USDT proxy)",
+      "pair": "USDT/IRR",
+      "source_id": "wallex",
+      "verify_url": "https://wallex.ir/"
+    },
+    {
+      "kind": "proxy",
+      "label": "Tabdeal (USDT proxy)",
+      "pair": "USDT/IRR",
+      "source_id": "tabdeal",
+      "verify_url": "https://tabdeal.org/"
+    },
+    {
+      "kind": "proxy",
+      "label": "Bitpin (USDT proxy)",
+      "pair": "USDT/IRR",
+      "source_id": "bitpin",
+      "verify_url": "https://bitpin.ir/"
+    },
+    {
+      "kind": "exact",
+      "label": "Global USD/CAD (open.er-api.com)",
+      "pair": "USD/CAD",
+      "source_id": "globalfx",
+      "verify_url": "https://open.er-api.com/v6/latest/USD"
+    }
+  ]
+}
