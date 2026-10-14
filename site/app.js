@@ -557,6 +557,7 @@ function fillSourceSelector() {
   const opts = ['<option value="estimate">estimate (derived)</option>', '<option value="average">average of enabled</option>']
   for (const s of INDEX.sources) opts.push(`<option value="${s.source_id}">${s.label}</option>`)
   srcSel.innerHTML = opts.join("")
+  if (srcSel.querySelector('option[value="nerkhsanj"]')) srcSel.value = "nerkhsanj"
 }
 
 async function loadHistory() {
