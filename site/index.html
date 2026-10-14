@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>exchange_rate</title>
+  <link rel="stylesheet" href="./style.css">
+</head>
+<body>
+  <header>
+    <h1>exchange_rate</h1>
+    <p class="sub">Iran free-market rates. Sources kept separate. Exact, proxy, and estimate are always labeled.</p>
+  </header>
+
+  <section id="calculator" class="card">
+    <h2>Converter</h2>
+    <div class="calc-grid">
+      <label>Date <select id="calc-date"></select></label>
+      <label>From
+        <select id="calc-from"><option>USD</option><option>CAD</option><option>IRR</option></select>
+      </label>
+      <label>To
+        <select id="calc-to"><option>IRR</option><option>USD</option><option>CAD</option></select>
+      </label>
+      <label>Rate source <select id="calc-source"></select></label>
+      <label>Rate side
+        <select id="calc-side"><option value="sell">sell</option><option value="buy">buy</option><option value="mid">mid</option></select>
+      </label>
+      <label>Amount <input id="calc-amount" type="number" value="1"></label>
+    </div>
+    <p id="calc-result" class="calc-result">-</p>
+    <p id="calc-provenance" class="provenance"></p>
+  </section>
+
+  <section id="tables" class="card"><h2>Sources</h2><div id="tables-body"></div></section>
+
+  <section id="charts" class="card">
+    <h2>History</h2>
+    <div class="controls">
+      <label><input type="checkbox" id="toggle-mid" checked> mid (buy+sell)/2</label>
+      <label><input type="checkbox" id="toggle-avg" checked> average of enabled</label>
+      <label>unit
+        <select id="unit"><option value="toman">toman</option><option value="rial">rial</option></select>
+      </label>
+    </div>
+    <div id="source-toggles"></div>
+    <canvas id="main-chart" height="120"></canvas>
+    <div id="per-source-charts"></div>
+  </section>
+
+  <div id="modal" class="modal hidden"><div class="modal-body"><button id="modal-close">close</button><div id="modal-content"></div></div></div>
+
+  <script src="./vendor/chart.umd.min.js"></script>
+  <script src="./app.js"></script>
+</body>
+</html>
