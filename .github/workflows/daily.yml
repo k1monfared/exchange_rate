@@ -1,0 +1,61 @@
+name: daily
+
+on:
+  schedule:
+    - cron: "30 14 * * *"   # 18:00 Tehran (UTC+3:30)
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths-ignore:
+      - "data/**"
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: daily
+  cancel-in-progress: false
+
+jobs:
+  collect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements.txt
+      - name: Run tests
+        run: python -m pytest scripts/tests -q
+      - name: Fetch rates
+        run: python -m scripts.fetch --date "$(TZ=Asia/Tehran date +%F)" --now "$(TZ=Asia/Tehran date -Iseconds)"
+      - name: Commit data
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data
+          git diff --quiet --cached || git commit -m "data: snapshot $(TZ=Asia/Tehran date +%F)"
+          git push
+      - name: Assemble site
+        run: |
+          mkdir -p _site
+          cp -r site/* _site/
+          mkdir -p _site/data
+          cp -r data/* _site/data/
+      - uses: actions/configure-pages@v5
+        with:
+          enablement: true
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+  deploy:
+    needs: collect
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
