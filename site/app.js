@@ -355,6 +355,8 @@ function allDatesFor(sourceId) {
 
 function renderCalendar() {
   const grid = document.getElementById("cal-grid")
+  const wrap = document.querySelector(".calendar-wrap")
+  if (wrap) wrap.setAttribute("dir", CAL === "jalali" ? "rtl" : "ltr")
   const src = currentSourceId()
   const avail = availability(src)
   if (!VIEW_ANCHOR) VIEW_ANCHOR = CURRENT_DATE || latestDate() || "2026-01-01"
@@ -913,10 +915,6 @@ function showProvenance(data) {
   document.getElementById("modal").classList.remove("hidden")
 }
 
-function pairLabel(r) {
-  return `${r.pair_from}/${r.pair_to}`
-}
-
 function midText(r) {
   if (r.buy_rial != null && r.sell_rial != null) return fmt((r.buy_rial + r.sell_rial) / 2)
   return "-"
@@ -945,14 +943,13 @@ function averageRowData(c, srcs) {
 }
 
 const TABLE_COLS = [
-  { key: "source", label: "source", w: "15%" },
+  { key: "source", label: "source", w: "16%" },
   { key: "kind", label: "kind", w: "8%" },
-  { key: "pair", label: "pair", w: "7%" },
-  { key: "buy", label: "buy", w: "10%", side: "buy" },
-  { key: "sell", label: "sell", w: "10%", side: "sell" },
-  { key: "mid", label: "mid", w: "10%", side: "mid" },
-  { key: "price", label: "price", w: "10%" },
-  { key: "unit", label: "unit", w: "6%" },
+  { key: "currency", label: "currency", w: "8%" },
+  { key: "buy", label: "buy", w: "11%", side: "buy" },
+  { key: "sell", label: "sell", w: "11%", side: "sell" },
+  { key: "mid", label: "mid", w: "11%", side: "mid" },
+  { key: "price", label: "price", w: "11%" },
   { key: "asof", label: "as-of", w: "10%" },
   { key: "status", label: "status", w: "6%" },
   { key: "links", label: "links", w: "8%" },
@@ -963,12 +960,11 @@ function tableCell(r, c, sides) {
   switch (c.key) {
     case "source": return `<td${cls}>${esc(r.source_id)}</td>`
     case "kind": return `<td${cls}>${badge(r)}</td>`
-    case "pair": return `<td${cls}>${esc(pairLabel(r))}</td>`
+    case "currency": return `<td${cls}>${esc(r.pair_from)}</td>`
     case "buy": return `<td${cls}>${fmt(r.buy_rial)}</td>`
     case "sell": return `<td${cls}>${fmt(r.sell_rial)}</td>`
     case "mid": return `<td${cls}>${midText(r)}</td>`
     case "price": return `<td${cls}>${fmt(r.price_rial)}</td>`
-    case "unit": return `<td${cls}>${esc(unitName())}</td>`
     case "asof": return `<td${cls}>${esc(fmtDate(r.as_of || CURRENT_DATE))}</td>`
     case "status": return `<td${cls}>${esc(r.status)}</td>`
     case "links": {
@@ -1002,6 +998,8 @@ function renderTables() {
 
   const asofs = DAY.map(r => r.as_of).filter(Boolean).sort()
   const asof = asofs.length ? asofs[asofs.length - 1] : CURRENT_DATE
+  const title = document.getElementById("tables-title")
+  if (title) title.textContent = `Sources: rates to IRR, in ${unitName()}`
   const header = `<p class="asof">date ${esc(fmtDate(CURRENT_DATE))} &middot; latest as-of ${esc(fmtDate(asof))}</p>`
   body.innerHTML = header + `<table class="grid">${colgroup}<thead>${head}</thead><tbody>${rowHtml}</tbody></table>`
   body.querySelectorAll(".badge.estimate").forEach(el => {
