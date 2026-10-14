@@ -123,8 +123,12 @@ function convert() {
   if (!SNAPSHOT) { out.textContent = `no data for this date (${date})`; out.className = "calc-result no-data"; return }
   const r = rate(from, to, sourceId, side)
   if (r == null) { out.textContent = "no rate for that direction from this source"; out.className = "calc-result no-data"; return }
-  const result = amount * r
-  out.textContent = `${amount} ${from} = ${result.toLocaleString(undefined, { maximumFractionDigits: 2 })} ${to}`
+  let amt = amount
+  if (from === "IRR") amt = amount * UNIT_DIVISOR
+  let result = amt * r
+  if (to === "IRR") result = result / UNIT_DIVISOR
+  const unitLabel = to === "IRR" ? (UNIT_DIVISOR === UNIT.toman ? " toman" : " rial") : ""
+  out.textContent = `${amount} ${from} = ${result.toLocaleString(undefined, { maximumFractionDigits: 2 })} ${to}${unitLabel}`
 }
 
 function fillSelectors() {
@@ -150,6 +154,89 @@ async function loadDate(date) {
   SNAPSHOT = SNAPSHOTS[date]
 }
 
+async function loadAllSnapshots() {
+  for (const d of INDEX.dates) {
+    if (!SNAPSHOTS[d]) SNAPSHOTS[d] = await getJson(`./data/snapshots/${d}.json`)
+  }
+}
+
+function seriesFor(metric) {
+  // metric: {sourceId, pair, side}
+  return INDEX.dates.map(d => {
+    const rec = (SNAPSHOTS[d].records || []).find(r =>
+      r.source_id === metric.sourceId && r.pair_from === metric.pair && r.pair_to === "IRR")
+    if (!rec) return null
+    let v = sideValue(rec, metric.side)
+    if (v == null) return null
+    return v / UNIT_DIVISOR
+  })
+}
+
+const PALETTE = ["#00548a", "#136f2f", "#8a5a00", "#8a0050", "#005f5f", "#5a008a", "#7a2e00", "#2e6f7a", "#6f136f"]
+let mainChart = null
+let perSourceCharts = []
+
+function buildMainChart() {
+  const ids = [...new Set(records().map(r => r.source_id))]
+  const datasets = []
+  ids.forEach((id, i) => {
+    const pair = id === "bonbast_archive" || id === "nerkhsanj" ? "USD" : "USDT"
+    const data = seriesFor({ sourceId: id, pair, side: "sell" })
+    if (data.every(x => x == null)) return
+    datasets.push({ label: `${id} sell`, data, borderColor: PALETTE[i % PALETTE.length], spanGaps: true, tension: .2 })
+  })
+  const avg = INDEX.dates.map((d, idx) => {
+    const vals = enabledSourceIds().map(id => {
+      const pair = id === "bonbast_archive" || id === "nerkhsanj" ? "USD" : "USDT"
+      return seriesFor({ sourceId: id, pair, side: "sell" })[idx]
+    }).filter(x => x != null)
+    return vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : null
+  })
+  if (document.getElementById("toggle-avg").checked && avg.some(x => x != null)) {
+    datasets.push({ label: "average (estimate)", data: avg, borderColor: "#000", borderDash: [6, 4], spanGaps: true })
+  }
+  const ctx = document.getElementById("main-chart")
+  if (mainChart) mainChart.destroy()
+  mainChart = new Chart(ctx, {
+    type: "line",
+    data: { labels: INDEX.dates, datasets },
+    options: { responsive: true, interaction: { mode: "index", intersect: false } },
+  })
+}
+
+function buildPerSourceCharts() {
+  const host = document.getElementById("per-source-charts")
+  host.innerHTML = ""
+  perSourceCharts.forEach(c => c.destroy())
+  perSourceCharts = []
+  const ids = enabledSourceIds()
+  ids.forEach((id, i) => {
+    const wrap = document.createElement("div")
+    const canvas = document.createElement("canvas")
+    wrap.appendChild(document.createElement("h4")).textContent = id
+    wrap.appendChild(canvas)
+    host.appendChild(wrap)
+    const pair = id === "bonbast_archive" || id === "nerkhsanj" ? "USD" : "USDT"
+    const ds = [
+      { label: "sell", data: seriesFor({ sourceId: id, pair, side: "sell" }), borderColor: "#c00", spanGaps: true },
+      { label: "buy", data: seriesFor({ sourceId: id, pair, side: "buy" }), borderColor: "#00c", spanGaps: true },
+    ]
+    if (document.getElementById("toggle-mid").checked) {
+      ds.push({ label: "mid", data: seriesFor({ sourceId: id, pair, side: "mid" }), borderColor: "#0a0", borderDash: [4, 4], spanGaps: true })
+    }
+    perSourceCharts.push(new Chart(canvas, { type: "line", data: { labels: INDEX.dates, datasets: ds }, options: { responsive: true } }))
+  })
+}
+
+function buildSourceToggles() {
+  const host = document.getElementById("source-toggles")
+  const ids = INDEX.sources.map(s => s.source_id).filter(id => id !== "globalfx")
+  host.innerHTML = ids.map(id => `<label><input type="checkbox" value="${id}" checked> ${id}</label>`).join("")
+  host.querySelectorAll("input").forEach(i => i.addEventListener("change", () => { buildMainChart(); buildPerSourceCharts() }))
+}
+
+function rebuildCharts() { buildMainChart(); buildPerSourceCharts() }
+
 async function boot() {
   INDEX = await getJson("./data/index.json")
   fillSelectors()
@@ -164,6 +251,15 @@ async function boot() {
   await loadDate(INDEX.latest)
   convert()
   renderTables()
+  await loadAllSnapshots()
+  buildSourceToggles()
+  rebuildCharts()
+  document.getElementById("toggle-mid").addEventListener("change", rebuildCharts)
+  document.getElementById("toggle-avg").addEventListener("change", rebuildCharts)
+  document.getElementById("unit").addEventListener("change", e => {
+    UNIT_DIVISOR = UNIT[e.target.value]
+    convert(); renderTables(); rebuildCharts()
+  })
 }
 
 function badge(r) {
