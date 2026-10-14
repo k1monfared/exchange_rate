@@ -1,6 +1,6 @@
 {
   "date": "2026-10-14",
-  "generated_at": "2026-10-14T08:01:47+03:30",
+  "generated_at": "2026-10-14T08:11:16+03:30",
   "records": [
     {
       "as_of": "1405/07/21",
@@ -180,7 +180,7 @@
       "kind": "proxy",
       "native": {
         "buy": 2594500,
-        "sell": 2626000,
+        "sell": 2627500,
         "unit": "rial"
       },
       "pair_from": "USDT",
@@ -188,9 +188,9 @@
       "price_rial": null,
       "raw": {
         "best_buy": 2594500,
-        "best_sell": 2626000
+        "best_sell": 2627500
       },
-      "sell_rial": 2626000,
+      "sell_rial": 2627500,
       "single_sided": false,
       "source_id": "ramzinex",
       "source_url": "https://publicapi.ramzinex.com/exchange/api/v1.0/exchange/orderbooks/11/buys_sells",
@@ -226,10 +226,7 @@
         "bidCount": 50,
         "bidPrice": "257046.0000000000000000",
         "bidVolume": "2490.09583804",
-        "direction": {
-          "BUY": 69,
-          "SELL": 31
-        },
+        "direction": [],
         "lastPrice": "257166.0000000000000000",
         "lastQty": "257166.0000000000000000",
         "lastTradeSide": "BUY"
@@ -323,10 +320,11 @@
       "as_of": "",
       "buy_rial": 1825453,
       "error": null,
-      "formula": "IRR_per_CAD = IRR_per_USD / CAD_per_USD",
+      "formula": "sell: IRR_per_CAD = USD_sell / CAD_per_USD ; buy: IRR_per_CAD = USD_buy / CAD_per_USD",
       "inputs": [
         {
           "kind": "exact",
+          "leg": "sell",
           "source_id": "bonbast_archive",
           "unit": "rial",
           "value": 2598000,
@@ -334,9 +332,17 @@
         },
         {
           "kind": "exact",
+          "leg": "buy",
+          "source_id": "bonbast_archive",
+          "unit": "rial",
+          "value": 2596000,
+          "verify_url": "https://bonbast.com/graph/usd"
+        },
+        {
+          "kind": "exact",
           "source_id": "globalfx",
           "unit": "ratio",
-          "value": 0.7031790019499153,
+          "value": 1.422113,
           "verify_url": "https://open.er-api.com/v6/latest/USD"
         }
       ],
