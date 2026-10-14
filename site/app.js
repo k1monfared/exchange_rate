@@ -597,6 +597,7 @@ function shade(hex, pct) {
 function historyDates() {
   const s = new Set()
   for (const series of Object.values(HISTORY.sources)) {
+    if (series.pair_to !== "IRR") continue
     for (const d of Object.keys(series.points)) s.add(d)
   }
   return [...s].sort()
@@ -676,17 +677,26 @@ function computeChartData() {
   return { dates, datasets }
 }
 
+function cssVar(name, fallback) {
+  const v = getComputedStyle(document.documentElement).getPropertyValue(name).trim()
+  return v || fallback
+}
+
 function chartOptions() {
+  const text = cssVar("--text", "#e0e0e0")
+  const border = cssVar("--border", "#30363d")
+  const surf = cssVar("--surface", cssVar("--header-bg", "#16213e"))
   return {
     responsive: true,
     interaction: { mode: "index", intersect: false },
-      scales: {
-        x: { ticks: { maxTicksLimit: 20, autoSkip: true, maxRotation: 90, minRotation: 90 } },
-        y: {},
-      },
+    scales: {
+      x: { ticks: { color: text, maxTicksLimit: 20, autoSkip: true, maxRotation: 90, minRotation: 90 }, grid: { color: border } },
+      y: { ticks: { color: text }, grid: { color: border } },
+    },
     plugins: {
       legend: { display: false },
       tooltip: {
+        backgroundColor: surf, titleColor: text, bodyColor: text, borderColor: border, borderWidth: 1,
         callbacks: {
           labelColor: (ctx) => ({ borderColor: ctx.dataset.borderColor, backgroundColor: ctx.dataset.borderColor }),
         },
@@ -709,6 +719,8 @@ function buildMainChart() {
   if (!HISTORY || !HISTORY.sources) return
   const { dates, datasets } = computeChartData()
   chartDates = dates
+  Chart.defaults.font.family = cssVar("--font-sans", "system-ui, sans-serif")
+  Chart.defaults.color = cssVar("--text", "#e0e0e0")
   const opts = chartOptions()
   const range = (savedX && savedX.min != null) ? savedX : defaultRange(dates)
   if (range) { opts.scales.x.min = range.min; opts.scales.x.max = range.max }
@@ -784,7 +796,48 @@ function updateBrush() {
   win.style.left = leftPct + "%"
   win.style.width = widthPct + "%"
   const lo = Math.floor(a), hi = Math.ceil(b)
-  label.textContent = `${fmtDate(chartDates[lo])} to ${fmtDate(chartDates[hi])}  (${hi - lo + 1} of ${n} days)`
+  const parts = [`${fmtDate(chartDates[lo])} to ${fmtDate(chartDates[hi])}`]
+  for (const cur of enabledCurrencies()) {
+    const c = currencyChange(cur, lo, hi)
+    if (c) parts.push(`${cur} ${pctText(c.first, c.last)}`)
+  }
+  label.textContent = parts.join("   ·   ")
+}
+
+function currencyChange(cur, lo, hi) {
+  const srcs = enabledSourceIds()
+  const valAt = (s, j) => { const p = s.points[chartDates[j]]; return p && p[1] != null ? p[1] : null }
+  let list = Object.values(HISTORY.sources).filter(s =>
+    s.pair_to === "IRR" && currencyOfSeries(s) === cur && srcs.includes(s.source_id))
+  // only sources that actually span this window (data near both ends), so a
+  // source with a couple of days cannot skew the average
+  const covers = s => {
+    let early = false, late = false
+    for (let j = lo; j <= Math.min(hi, lo + 6); j++) if (valAt(s, j) != null) early = true
+    for (let j = Math.max(lo, hi - 6); j <= hi; j++) if (valAt(s, j) != null) late = true
+    return early && late
+  }
+  const covered = list.filter(covers)
+  if (covered.length) list = covered
+  if (!list.length) return null
+  let first = null, last = null
+  for (let j = lo; j <= hi; j++) {
+    const vals = list.map(s => valAt(s, j)).filter(v => v != null)
+    if (!vals.length) continue
+    const avg = vals.reduce((x, y) => x + y, 0) / vals.length
+    if (first == null) first = avg
+    last = avg
+  }
+  if (first == null || first === 0) return null
+  return { first, last }
+}
+
+function pctText(first, last) {
+  const r = last / first
+  const pct = (r - 1) * 100
+  const up = pct >= 0
+  if (pct > 200) return `${r.toFixed(1)}x increase`
+  return `${up ? "+" : ""}${pct.toFixed(1)}%`
 }
 
 function initBrush() {
@@ -865,6 +918,40 @@ function updateCalToggleLabel() {
   document.getElementById("cal-toggle").textContent = CAL === "gregorian" ? "Gregorian" : "Jalali (Shamsi)"
 }
 
+function renderIcons(root) { if (window.siteKitRenderIcons) window.siteKitRenderIcons(root || document) }
+
+function initChrome() {
+  const sidebar = document.getElementById("sidebar")
+  const backdrop = document.getElementById("backdrop")
+  const toggle = document.getElementById("sidebar-toggle")
+
+  function setSidebar(open) {
+    sidebar.classList.toggle("open", open)
+    backdrop.hidden = !open
+    toggle.setAttribute("aria-expanded", String(open))
+    const span = toggle.querySelector("[data-icon]")
+    if (span) {
+      span.setAttribute("data-icon", open ? "x" : "menu")
+      span.removeAttribute("data-icon-rendered")
+      span.innerHTML = ""
+      renderIcons(toggle)
+    }
+  }
+  toggle.addEventListener("click", () => setSidebar(!sidebar.classList.contains("open")))
+  document.getElementById("sidebar-close").addEventListener("click", () => setSidebar(false))
+  backdrop.addEventListener("click", () => setSidebar(false))
+
+  const tabs = [...document.querySelectorAll(".tab")]
+  tabs.forEach(t => t.addEventListener("click", () => {
+    tabs.forEach(x => x.classList.toggle("active", x === t))
+    document.querySelectorAll(".panel").forEach(p => p.classList.toggle("active", p.id === "panel-" + t.dataset.tab))
+    if (t.dataset.tab === "chart") setTimeout(() => { if (mainChart) { mainChart.resize(); rescaleY(mainChart) } }, 0)
+  }))
+
+  const themeBtn = document.getElementById("theme-toggle")
+  if (themeBtn) themeBtn.addEventListener("click", () => setTimeout(() => buildMainChart(), 0))
+}
+
 async function boot() {
   INDEX = await getJson("./data/index.json")
   fillSourceSelector()
@@ -909,6 +996,8 @@ async function boot() {
   renderTables()
   rebuildCharts()
   updateCalToggleLabel()
+  initChrome()
+  renderIcons()
 }
 
 function badge(r) {
