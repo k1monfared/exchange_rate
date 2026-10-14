@@ -685,6 +685,11 @@ function chartOptions() {
       },
     plugins: {
       legend: { display: false },
+      tooltip: {
+        callbacks: {
+          labelColor: (ctx) => ({ borderColor: ctx.dataset.borderColor, backgroundColor: ctx.dataset.borderColor }),
+        },
+      },
       zoom: {
         pan: { enabled: true, mode: "x", onPan: ({ chart }) => rescaleY(chart) },
         zoom: {
