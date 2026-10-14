@@ -53,12 +53,19 @@ def run(date: str, data_dir: str, registry: dict,
             payload = fetch_json(src.url())
             recs = src.parse(payload)
         except Exception as exc:  # one source must never abort the run
-            meta = next(s for s in registry["sources"] if s["source_id"] == source_id)
+            try:
+                url = src.url()
+            except Exception:
+                url = ""
+            meta = next(
+                (s for s in registry["sources"] if s["source_id"] == source_id), {}
+            )
             records.append(Record(
-                source_id=source_id, kind=meta["kind"],
-                pair_from=meta["pair_from"].split(",")[0], pair_to=meta["pair_to"],
+                source_id=source_id, kind=meta.get("kind", "proxy"),
+                pair_from=str(meta.get("pair_from", source_id)).split(",")[0],
+                pair_to=meta.get("pair_to", "IRR"),
                 status="error", error=f"{type(exc).__name__}: {exc}",
-                source_url=src.url(), verify_url=meta["verify_url"],
+                source_url=url, verify_url=meta.get("verify_url", ""),
             ))
             continue
         for rec in recs:

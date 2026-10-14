@@ -1,7 +1,10 @@
 import json
 import os
 
+import fetch
 from fetch import run
+from sources import globalfx as _globalfx
+from sources.base import Source
 
 REGISTRY = {"version": 1, "sources": [
     {"source_id": "nobitex", "label": "Nobitex", "kind": "proxy", "pair_from": "USDT",
@@ -62,3 +65,31 @@ def test_suspect_value_flagged(tmp_path):
     recs = run("2026-10-13", d, REGISTRY, wild, "x")
     nobitex = next(r for r in recs if r.source_id == "nobitex")
     assert nobitex.status == "suspect"
+
+
+class _BoomSource(Source):
+    source_id = "boom"
+    kind = "exact"
+
+    def url(self):
+        raise RuntimeError("no url")
+
+    def parse(self, payload):
+        raise AssertionError("parse must not be reached")
+
+
+def test_source_whose_url_raises_does_not_abort(tmp_path, monkeypatch):
+    d = str(tmp_path)
+    monkeypatch.setattr(
+        fetch, "build_sources",
+        lambda registry: {"boom": _BoomSource(), "globalfx": _globalfx.GlobalFx()},
+    )
+
+    recs = run("2026-10-13", d, REGISTRY, _good, "x")
+    boom = next(r for r in recs if r.source_id == "boom")
+    assert boom.status == "error"
+    assert "no url" in (boom.error or "")
+    assert boom.source_url == ""
+    assert boom.verify_url == ""
+    assert any(r.source_id == "globalfx" and r.status == "ok" for r in recs)
+
