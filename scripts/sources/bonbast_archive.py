@@ -29,7 +29,7 @@ class BonbastArchive(Source):
                 buy_rial=to_rial(block["buy"], "toman") if "buy" in block else None,
                 sell_rial=to_rial(block["sell"], "toman") if "sell" in block else None,
                 single_sided="buy" not in block or "sell" not in block,
-                as_of=latest,
+                as_of=latest.replace("/", "-"),
                 native={"buy": block.get("buy"), "sell": block.get("sell"), "unit": "toman"},
                 source_url=self.url(),
                 verify_url="https://bonbast.com/graph/" + pair.lower(),

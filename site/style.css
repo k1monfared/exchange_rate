@@ -45,7 +45,8 @@ select, input { padding: .35rem; font-size: 1rem; }
 table { border-collapse: collapse; width: 100%; margin-bottom: 1rem; }
 th, td { border: 1px solid var(--line); padding: .35rem .5rem; text-align: right; font-variant-numeric: tabular-nums; }
 th:first-child, td:first-child { text-align: left; }
-table.grid { table-layout: fixed; }
+#tables-body { overflow-x: auto; }
+table.grid { table-layout: fixed; min-width: 640px; }
 table.grid th, table.grid td { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: .82rem; }
 table.grid th:nth-child(2), table.grid td:nth-child(2) { text-align: left; }
 .dim { color: #bbb; }

@@ -109,25 +109,15 @@ const JALALI_MONTHS = ["Farvardin", "Ordibehesht", "Khordad", "Tir", "Mordad", "
 const JALALI_MONTHS_FA = ["فروردین", "اردیبهشت", "خرداد", "تیر", "مرداد", "شهریور", "مهر", "آبان", "آذر", "دی", "بهمن", "اسفند"]
 const FA_DIGITS = "۰۱۲۳۴۵۶۷۸۹"
 const ISO_RE = /^\d{4}-\d{2}-\d{2}$/
-const JAL_RE = /^\d{4}\/\d{2}\/\d{2}$/
 
 function faDigits(s) { return String(s).replace(/[0-9]/g, d => FA_DIGITS[+d]) }
 
-// normalize any stored date to Gregorian ISO; returns "" if unrecognized
-function asOfIso(s) {
-  if (!s) return ""
-  if (ISO_RE.test(s)) return s
-  if (JAL_RE.test(s)) {
-    const [jy, jm, jd] = s.split("/").map(Number)
-    return jalaliToIso(jy, jm, jd)
-  }
-  return ""
-}
-
+// stored dates are Gregorian ISO (date or datetime); anything else returned verbatim
 function fmtDate(iso) {
   if (!iso) return "-"
-  const g = asOfIso(iso)
-  if (!g) return iso
+  const m = /^(\d{4}-\d{2}-\d{2})/.exec(iso)
+  if (!m) return iso
+  const g = m[1]
   if (CAL === "gregorian") return g
   const j = isoToJalali(g)
   return faDigits(`${j.jy}/${String(j.jm).padStart(2, "0")}/${String(j.jd).padStart(2, "0")}`)
@@ -708,15 +698,12 @@ function buildMainChart() {
   if (!HISTORY || !HISTORY.sources) return
   const { dates, datasets } = computeChartData()
   chartDates = dates
-  if (mainChart) mainChart.destroy()
-  mainChart = new Chart(canvas, { type: "line", data: { labels: chartLabels(dates), datasets }, options: chartOptions() })
+  const opts = chartOptions()
   const range = (savedX && savedX.min != null) ? savedX : defaultRange(dates)
-  if (range) {
-    mainChart.options.scales.x.min = range.min
-    mainChart.options.scales.x.max = range.max
-    mainChart.update("none")
-    rescaleY(mainChart)
-  }
+  if (range) { opts.scales.x.min = range.min; opts.scales.x.max = range.max }
+  if (mainChart) mainChart.destroy()
+  mainChart = new Chart(canvas, { type: "line", data: { labels: chartLabels(dates), datasets }, options: opts })
+  if (range) rescaleY(mainChart)
   updateBrush()
 }
 
@@ -964,20 +951,25 @@ function averageRowData(c, srcs) {
 
 const TABLE_COLS = [
   { key: "source", label: "source", w: "18%" },
-  { key: "kind", label: "kind", w: "8%" },
-  { key: "currency", label: "currency", w: "8%" },
+  { key: "kind", label: "kind", w: "12%" },
+  { key: "currency", label: "currency", w: "11%" },
   { key: "buy", label: "buy", w: "12%", side: "buy" },
   { key: "sell", label: "sell", w: "12%", side: "sell" },
   { key: "mid", label: "mid", w: "12%", side: "mid" },
-  { key: "asof", label: "as-of", w: "12%" },
-  { key: "status", label: "status", w: "6%" },
-  { key: "links", label: "links", w: "12%" },
+  { key: "asof", label: "as-of", w: "13%" },
+  { key: "status", label: "status", w: "10%" },
 ]
 
 function tableCell(r, c, sides) {
   const cls = (c.side && !sides.includes(c.side)) ? ' class="dim"' : ""
   switch (c.key) {
-    case "source": return `<td${cls}>${esc(r.source_id)}</td>`
+    case "source": {
+      const url = r.source_url || r.verify_url
+      const name = esc(r.source_id)
+      return url
+        ? `<td${cls}><a href="${esc(url)}" target="_blank" rel="noopener">${name}</a></td>`
+        : `<td${cls}>${name}</td>`
+    }
     case "kind": return `<td${cls}>${badge(r)}</td>`
     case "currency": return `<td${cls}>${esc(r.pair_from)}</td>`
     case "buy": return `<td${cls}>${fmt(r.buy_rial)}</td>`
@@ -985,12 +977,6 @@ function tableCell(r, c, sides) {
     case "mid": return `<td${cls}>${midText(r)}</td>`
     case "asof": return `<td${cls}>${esc(fmtDate(r.as_of || CURRENT_DATE))}</td>`
     case "status": return `<td${cls}>${esc(r.status)}</td>`
-    case "links": {
-      const links = (r.source_url || r.verify_url)
-        ? `<a href="${esc(r.source_url || r.verify_url)}" target="_blank" rel="noopener">source</a>${r.verify_url ? ` &middot; <a href="${esc(r.verify_url)}" target="_blank" rel="noopener">verify</a>` : ""}`
-        : "-"
-      return `<td${cls}>${links}</td>`
-    }
   }
   return "<td></td>"
 }
@@ -1014,7 +1000,7 @@ function renderTables() {
   const head = `<tr>${TABLE_COLS.map(c => `<th${c.side && !sides.includes(c.side) ? ' class="dim"' : ""}>${c.label}</th>`).join("")}</tr>`
   const rowHtml = rows.map(r => `<tr>${TABLE_COLS.map(c => tableCell(r, c, sides)).join("")}</tr>`).join("")
 
-  const asofs = DAY.map(r => asOfIso(r.as_of)).filter(Boolean).sort()
+  const asofs = DAY.map(r => r.as_of).filter(s => ISO_RE.test(s || "")).sort()
   const asof = asofs.length ? asofs[asofs.length - 1] : CURRENT_DATE
   const title = document.getElementById("tables-title")
   if (title) title.textContent = `Sources: rates to IRR, in ${unitName()}`

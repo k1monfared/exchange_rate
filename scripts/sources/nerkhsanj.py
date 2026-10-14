@@ -1,8 +1,21 @@
 from __future__ import annotations
 
+import re
+
+from jalali import jalaali_to_iso
 from model import Record
 from normalize import to_rial
 from sources.base import Source
+
+
+def _date_iso(d: str) -> str:
+    m = re.match(r"^(\d{4})/(\d{2})/(\d{2})$", d or "")
+    if not m:
+        return d or ""
+    try:
+        return jalaali_to_iso(*(int(x) for x in m.groups()))
+    except ValueError:
+        return d
 
 
 class Nerkhsanj(Source):
@@ -14,7 +27,7 @@ class Nerkhsanj(Source):
 
     def parse(self, payload) -> list[Record]:
         rates = payload["rates"]
-        as_of = payload.get("date", "")
+        as_of = _date_iso(payload.get("date", ""))
         out = []
         for pair, key in (("USD", "dollar"), ("CAD", "cad")):
             raw = rates[key]

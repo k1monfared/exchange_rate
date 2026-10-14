@@ -1,9 +1,9 @@
 {
   "date": "2026-10-14",
-  "generated_at": "2026-10-14T22:16:23+03:30",
+  "generated_at": "2026-10-15T01:35:52+03:30",
   "records": [
     {
-      "as_of": "1405/07/22",
+      "as_of": "2026-10-14",
       "buy_rial": null,
       "error": null,
       "kind": "exact",
@@ -27,7 +27,7 @@
       "verify_url": "https://nerkh.jahankhahan.shop/developers/en"
     },
     {
-      "as_of": "1405/07/22",
+      "as_of": "2026-10-14",
       "buy_rial": null,
       "error": null,
       "kind": "exact",
@@ -51,7 +51,7 @@
       "verify_url": "https://nerkh.jahankhahan.shop/developers/en"
     },
     {
-      "as_of": "2026/10/13",
+      "as_of": "2026-10-13",
       "buy_rial": 2596000,
       "error": null,
       "kind": "exact",
@@ -76,7 +76,7 @@
       "verify_url": "https://bonbast.com/graph/usd"
     },
     {
-      "as_of": "2026/10/13",
+      "as_of": "2026-10-13",
       "buy_rial": 1826000,
       "error": null,
       "kind": "exact",
@@ -116,12 +116,12 @@
       "raw": {
         "buy_price": 264750,
         "diff24d": "2.26",
-        "diff30d": "15.66",
+        "diff30d": "14.96",
         "diff7d": "-0.21",
         "last24h": 258900,
         "last24hMax": 266100,
         "last24hMin": 258900,
-        "last30d": 228900,
+        "last30d": 230300,
         "last30dMax": 271200,
         "last30dMin": 225150,
         "last7d": 265300,
@@ -140,32 +140,32 @@
     },
     {
       "as_of": "",
-      "buy_rial": 2649000,
+      "buy_rial": 2648110,
       "error": null,
       "kind": "proxy",
       "native": {
-        "buy": "2649000",
-        "sell": "2652500",
+        "buy": "2648110",
+        "sell": "2655830",
         "unit": "rial"
       },
       "pair_from": "USDT",
       "pair_to": "IRR",
       "price_rial": null,
       "raw": {
-        "bestBuy": "2649000",
-        "bestSell": "2652500",
-        "dayChange": "1.84",
-        "dayClose": "2649010",
+        "bestBuy": "2648110",
+        "bestSell": "2655830",
+        "dayChange": "2.11",
+        "dayClose": "2655830",
         "dayHigh": "2670000",
         "dayLow": "2582220",
         "dayOpen": "2601040",
         "isClosed": false,
-        "latest": "2649010",
-        "mark": "2650750",
-        "volumeDst": "7160017676142.987742731",
-        "volumeSrc": "2719683.4579701207"
+        "latest": "2655830",
+        "mark": "2651970",
+        "volumeDst": "7160504012971.122733507",
+        "volumeSrc": "2719864.8437842023"
       },
-      "sell_rial": 2652500,
+      "sell_rial": 2655830,
       "single_sided": false,
       "source_id": "nobitex",
       "source_url": "https://apiv2.nobitex.ir/market/stats?srcCurrency=usdt&dstCurrency=rls",
@@ -175,22 +175,22 @@
     },
     {
       "as_of": "",
-      "buy_rial": 2670000,
+      "buy_rial": 2656635,
       "error": null,
       "kind": "proxy",
       "native": {
-        "buy": 2670000,
-        "sell": 2688000,
+        "buy": 2656635,
+        "sell": 2676391,
         "unit": "rial"
       },
       "pair_from": "USDT",
       "pair_to": "IRR",
       "price_rial": null,
       "raw": {
-        "best_buy": 2670000,
-        "best_sell": 2688000
+        "best_buy": 2656635,
+        "best_sell": 2676391
       },
-      "sell_rial": 2688000,
+      "sell_rial": 2676391,
       "single_sided": false,
       "source_id": "ramzinex",
       "source_url": "https://publicapi.ramzinex.com/exchange/api/v1.0/exchange/orderbooks/11/buys_sells",
@@ -222,10 +222,10 @@
         "7d_volume": "5281782.9173138300000000",
         "askCount": 50,
         "askPrice": "264916.0000000000000000",
-        "askVolume": "28662.82",
+        "askVolume": "26792.02",
         "bidCount": 50,
         "bidPrice": "264735.0000000000000000",
-        "bidVolume": "4852.05",
+        "bidVolume": "3814.31",
         "direction": {
           "BUY": 55,
           "SELL": 45

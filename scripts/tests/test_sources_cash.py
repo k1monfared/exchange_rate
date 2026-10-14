@@ -27,5 +27,5 @@ def test_bonbast_uses_latest_date_and_both_sides():
     assert recs["USD"].sell_rial == 2606000
     assert recs["USD"].buy_rial == 2604000
     assert recs["CAD"].sell_rial == 1825000
-    assert recs["USD"].as_of.startswith("2026/10/12")
+    assert recs["USD"].as_of == "2026-10-12"
     assert recs["USD"].single_sided is False
