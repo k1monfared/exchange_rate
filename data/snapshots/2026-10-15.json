@@ -1,6 +1,6 @@
 {
   "date": "2026-10-15",
-  "generated_at": "2026-10-15T01:35:29+03:30",
+  "generated_at": "2026-10-15T01:49:25+03:30",
   "records": [
     {
       "as_of": "2026-10-14",
@@ -116,12 +116,12 @@
       "raw": {
         "buy_price": 264750,
         "diff24d": "2.26",
-        "diff30d": "15.08",
+        "diff30d": "14.83",
         "diff7d": "-0.21",
         "last24h": 258900,
         "last24hMax": 266100,
         "last24hMin": 258900,
-        "last30d": 230050,
+        "last30d": 230550,
         "last30dMax": 271200,
         "last30dMin": 225150,
         "last7d": 265300,
@@ -161,7 +161,7 @@
         "dayOpen": "2601040",
         "isClosed": false,
         "latest": "2655830",
-        "mark": "2651970",
+        "mark": "2651810",
         "volumeDst": "7160504012971.122733507",
         "volumeSrc": "2719864.8437842023"
       },
@@ -175,22 +175,22 @@
     },
     {
       "as_of": "",
-      "buy_rial": 2656635,
+      "buy_rial": 2659265,
       "error": null,
       "kind": "proxy",
       "native": {
-        "buy": 2656635,
-        "sell": 2676391,
+        "buy": 2659265,
+        "sell": 2680000,
         "unit": "rial"
       },
       "pair_from": "USDT",
       "pair_to": "IRR",
       "price_rial": null,
       "raw": {
-        "best_buy": 2656635,
-        "best_sell": 2676391
+        "best_buy": 2659265,
+        "best_sell": 2680000
       },
-      "sell_rial": 2676391,
+      "sell_rial": 2680000,
       "single_sided": false,
       "source_id": "ramzinex",
       "source_url": "https://publicapi.ramzinex.com/exchange/api/v1.0/exchange/orderbooks/11/buys_sells",
