@@ -12,7 +12,7 @@ h1 { margin: 0; }
 .calc-flex { display: flex; gap: 1.25rem; flex-wrap: wrap; }
 .calc-right { flex: 1 1 320px; min-width: 280px; }
 .calendar-wrap { flex: 0 0 280px; }
-.cal-head { display: flex; align-items: center; justify-content: space-between; gap: .5rem; margin-top: .4rem; }
+.cal-head { display: flex; align-items: center; justify-content: space-between; gap: .5rem; margin-bottom: .4rem; }
 .cal-head button { border: 1px solid var(--line); background: #fff; border-radius: 4px; padding: 0 .5rem; font-size: 1.1rem; cursor: pointer; }
 #cal-title.cal-title { flex: 1; font-size: .9rem; font-weight: 600; padding: .3rem .5rem; }
 .cal-modal { border: 1px solid var(--line); border-radius: 8px; padding: 1rem; }
