@@ -818,14 +818,20 @@ function resetZoom() {
   resetting = true
   mainChart.resetZoom()
   if (mainChart.options.scales) {
-    delete mainChart.options.scales.x.min
-    delete mainChart.options.scales.x.max
     delete mainChart.options.scales.y.min
     delete mainChart.options.scales.y.max
   }
+  const range = defaultRange(chartDates)
+  if (range) {
+    mainChart.options.scales.x.min = range.min
+    mainChart.options.scales.x.max = range.max
+  } else if (mainChart.options.scales && mainChart.options.scales.x) {
+    delete mainChart.options.scales.x.min
+    delete mainChart.options.scales.x.max
+  }
   mainChart.update("none")
   resetting = false
-  updateBrush()
+  rescaleY(mainChart)
 }
 
 function buildToggles() {

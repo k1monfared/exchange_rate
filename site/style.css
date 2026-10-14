@@ -64,6 +64,9 @@ table.grid th:nth-child(2), table.grid td:nth-child(2) { text-align: left; }
 .layout { display: flex; gap: 1rem; align-items: flex-start; }
 .sidebar { flex: 0 0 210px; position: sticky; top: 1rem; border: 1px solid var(--line); border-radius: 8px; padding: 1rem; }
 .sidebar h3 { margin: 0 0 .25rem; }
+.chart-head { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
+.chart-head h2 { margin: 0; }
+#reset-zoom { border: 1px solid var(--line); background: #fff; border-radius: 6px; padding: .35rem .7rem; font-size: .85rem; cursor: pointer; }
 .sidebar .toggles-row { flex-direction: column; gap: .2rem; align-items: flex-start; }
 .sidebar .toggles { flex-direction: column; gap: .2rem; }
 .sidebar .side-check { flex-direction: row; align-items: center; color: var(--fg); margin: .4rem 0; }

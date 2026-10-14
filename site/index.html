@@ -55,12 +55,14 @@
       <label>unit
         <select id="unit"><option value="toman">toman</option><option value="rial">rial</option></select>
       </label>
-      <button id="reset-zoom" type="button">reset zoom</button>
     </aside>
     <main class="content">
       <section id="tables" class="card"><h2 id="tables-title">Sources: rates to IRR, in toman</h2><div id="tables-body"></div></section>
       <section id="charts" class="card">
-        <h2>History</h2>
+        <div class="chart-head">
+          <h2>History</h2>
+          <button id="reset-zoom" type="button">reset zoom</button>
+        </div>
         <p class="sub">Drag the chart to pan, scroll or pinch to zoom. Y auto-fits.</p>
         <canvas id="main-chart" height="120"></canvas>
         <div class="zoom-ind">
