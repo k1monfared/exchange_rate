@@ -1,0 +1,367 @@
+{
+  "date": "2026-10-18",
+  "generated_at": "2026-10-18T20:57:43+03:30",
+  "records": [
+    {
+      "as_of": "2026-10-18",
+      "buy_rial": null,
+      "error": null,
+      "kind": "exact",
+      "native": {
+        "unit": "toman",
+        "value": 262800
+      },
+      "pair_from": "USD",
+      "pair_to": "IRR",
+      "price_rial": 2628000,
+      "raw": {
+        "key": "dollar",
+        "value": 262800
+      },
+      "sell_rial": null,
+      "single_sided": true,
+      "source_id": "nerkhsanj",
+      "source_url": "https://nerkh.jahankhahan.shop/data/live.json",
+      "status": "ok",
+      "value": null,
+      "verify_url": "https://nerkh.jahankhahan.shop/developers/en"
+    },
+    {
+      "as_of": "2026-10-18",
+      "buy_rial": null,
+      "error": null,
+      "kind": "exact",
+      "native": {
+        "unit": "toman",
+        "value": 185710
+      },
+      "pair_from": "CAD",
+      "pair_to": "IRR",
+      "price_rial": 1857100,
+      "raw": {
+        "key": "cad",
+        "value": 185710
+      },
+      "sell_rial": null,
+      "single_sided": true,
+      "source_id": "nerkhsanj",
+      "source_url": "https://nerkh.jahankhahan.shop/data/live.json",
+      "status": "ok",
+      "value": null,
+      "verify_url": "https://nerkh.jahankhahan.shop/developers/en"
+    },
+    {
+      "as_of": "2026-10-17",
+      "buy_rial": 2632000,
+      "error": null,
+      "kind": "exact",
+      "native": {
+        "buy": 263200,
+        "sell": 263400,
+        "unit": "toman"
+      },
+      "pair_from": "USD",
+      "pair_to": "IRR",
+      "price_rial": null,
+      "raw": {
+        "buy": 263200,
+        "sell": 263400
+      },
+      "sell_rial": 2634000,
+      "single_sided": false,
+      "source_id": "bonbast_archive",
+      "source_url": "https://raw.githubusercontent.com/SamadiPour/rial-exchange-rates-archive/data/gregorian_all.min.json",
+      "status": "ok",
+      "value": null,
+      "verify_url": "https://bonbast.com/graph/usd"
+    },
+    {
+      "as_of": "2026-10-17",
+      "buy_rial": 1859500,
+      "error": null,
+      "kind": "exact",
+      "native": {
+        "buy": 185950,
+        "sell": 186050,
+        "unit": "toman"
+      },
+      "pair_from": "CAD",
+      "pair_to": "IRR",
+      "price_rial": null,
+      "raw": {
+        "buy": 185950,
+        "sell": 186050
+      },
+      "sell_rial": 1860500,
+      "single_sided": false,
+      "source_id": "bonbast_archive",
+      "source_url": "https://raw.githubusercontent.com/SamadiPour/rial-exchange-rates-archive/data/gregorian_all.min.json",
+      "status": "ok",
+      "value": null,
+      "verify_url": "https://bonbast.com/graph/cad"
+    },
+    {
+      "as_of": "",
+      "buy_rial": 2621000,
+      "error": null,
+      "kind": "proxy",
+      "native": {
+        "buy": 262100,
+        "sell": 262100,
+        "unit": "toman"
+      },
+      "pair_from": "USDT",
+      "pair_to": "IRR",
+      "price_rial": null,
+      "raw": {
+        "buy_price": 262100,
+        "diff24d": "-0.55",
+        "diff30d": "15.39",
+        "diff7d": "-0.57",
+        "last24h": 263550,
+        "last24hMax": 263550,
+        "last24hMin": 259650,
+        "last30d": 227150,
+        "last30dMax": 271200,
+        "last30dMin": 225150,
+        "last7d": 263600,
+        "last7dMax": 267900,
+        "last7dMin": 254750,
+        "price": 262100,
+        "sell_price": 262100
+      },
+      "sell_rial": 2621000,
+      "single_sided": false,
+      "source_id": "tetherland",
+      "source_url": "https://api.tetherland.com/currencies",
+      "status": "ok",
+      "value": null,
+      "verify_url": "https://tetherland.com/"
+    },
+    {
+      "as_of": "",
+      "buy_rial": 2620050,
+      "error": null,
+      "kind": "proxy",
+      "native": {
+        "buy": "2620050",
+        "sell": "2624870",
+        "unit": "rial"
+      },
+      "pair_from": "USDT",
+      "pair_to": "IRR",
+      "price_rial": null,
+      "raw": {
+        "bestBuy": "2620050",
+        "bestSell": "2624870",
+        "dayChange": "-0.35",
+        "dayClose": "2624880",
+        "dayHigh": "2646000",
+        "dayLow": "2592000",
+        "dayOpen": "2633990",
+        "isClosed": false,
+        "latest": "2624880",
+        "mark": "2622320",
+        "volumeDst": "5118688862221.62729315",
+        "volumeSrc": "1955126.4352326551"
+      },
+      "sell_rial": 2624870,
+      "single_sided": false,
+      "source_id": "nobitex",
+      "source_url": "https://apiv2.nobitex.ir/market/stats?srcCurrency=usdt&dstCurrency=rls",
+      "status": "ok",
+      "value": null,
+      "verify_url": "https://nobitex.ir/markets/usdt-rls"
+    },
+    {
+      "as_of": "",
+      "buy_rial": 2619047,
+      "error": null,
+      "kind": "proxy",
+      "native": {
+        "buy": 2619047,
+        "sell": 2635001,
+        "unit": "rial"
+      },
+      "pair_from": "USDT",
+      "pair_to": "IRR",
+      "price_rial": null,
+      "raw": {
+        "best_buy": 2619047,
+        "best_sell": 2635001
+      },
+      "sell_rial": 2635001,
+      "single_sided": false,
+      "source_id": "ramzinex",
+      "source_url": "https://publicapi.ramzinex.com/exchange/api/v1.0/exchange/orderbooks/11/buys_sells",
+      "status": "ok",
+      "value": null,
+      "verify_url": "https://ramzinex.com/exchange/usdt-irr"
+    },
+    {
+      "as_of": "",
+      "buy_rial": 2620420,
+      "error": null,
+      "kind": "proxy",
+      "native": {
+        "buy": "262042.0000000000000000",
+        "sell": "262278.0000000000000000",
+        "unit": "toman"
+      },
+      "pair_from": "USDT",
+      "pair_to": "IRR",
+      "price_rial": null,
+      "raw": {
+        "24h_ch": -0.72,
+        "24h_highPrice": "264186.0000000000000000",
+        "24h_lowPrice": "259729.0000000000000000",
+        "24h_quoteVolume": "147135138137.2947148600000000",
+        "24h_tmnVolume": "147135138137.2947148600000000",
+        "24h_volume": "561663.2145629400000000",
+        "7d_ch": -0.62,
+        "7d_volume": "4710610.6119994300000000",
+        "askCount": 50,
+        "askPrice": "262278.0000000000000000",
+        "askVolume": "26667.23595699",
+        "bidCount": 50,
+        "bidPrice": "262042.0000000000000000",
+        "bidVolume": "20885.22",
+        "direction": {
+          "BUY": 62,
+          "SELL": 38
+        },
+        "lastPrice": "262278.0000000000000000",
+        "lastQty": "262278.0000000000000000",
+        "lastTradeSide": "SELL"
+      },
+      "sell_rial": 2622780,
+      "single_sided": false,
+      "source_id": "wallex",
+      "source_url": "https://api.wallex.ir/v1/markets",
+      "status": "ok",
+      "value": null,
+      "verify_url": "https://wallex.ir/"
+    },
+    {
+      "as_of": "",
+      "buy_rial": 2617500,
+      "error": null,
+      "kind": "proxy",
+      "native": {
+        "buy": "261750.0000000000000000",
+        "sell": "261970.0000000000000000",
+        "unit": "toman"
+      },
+      "pair_from": "USDT",
+      "pair_to": "IRR",
+      "price_rial": null,
+      "raw": {
+        "best_ask": [
+          "261970.0000000000000000",
+          "3.50000000"
+        ],
+        "best_bid": [
+          "261750.0000000000000000",
+          "188.53651100"
+        ]
+      },
+      "sell_rial": 2619700,
+      "single_sided": false,
+      "source_id": "tabdeal",
+      "source_url": "https://api.tabdeal.org/r/api/v1/depth/?symbol=USDTIRT",
+      "status": "ok",
+      "value": null,
+      "verify_url": "https://tabdeal.org/"
+    },
+    {
+      "as_of": "2026-10-18T17:26:53.000Z",
+      "buy_rial": null,
+      "error": null,
+      "kind": "proxy",
+      "native": {
+        "unit": "toman",
+        "value": "261782"
+      },
+      "pair_from": "USDT",
+      "pair_to": "IRR",
+      "price_rial": 2617820,
+      "raw": {
+        "price": "261782"
+      },
+      "sell_rial": null,
+      "single_sided": true,
+      "source_id": "bitpin",
+      "source_url": "https://api.bitpin.ir/v1/mkt/markets/",
+      "status": "ok",
+      "value": null,
+      "verify_url": "https://bitpin.ir/"
+    },
+    {
+      "as_of": "Sun, 18 Oct 2026 00:02:31 +0000",
+      "buy_rial": null,
+      "error": null,
+      "kind": "exact",
+      "native": {
+        "cad_per_usd": 1.414714,
+        "unit": "ratio"
+      },
+      "pair_from": "USD",
+      "pair_to": "CAD",
+      "price_rial": null,
+      "raw": {
+        "CAD": 1.414714
+      },
+      "sell_rial": null,
+      "single_sided": false,
+      "source_id": "globalfx",
+      "source_url": "https://open.er-api.com/v6/latest/USD",
+      "status": "ok",
+      "value": 0.7068566508849138,
+      "verify_url": "https://open.er-api.com/v6/latest/USD"
+    },
+    {
+      "as_of": "",
+      "buy_rial": 1860447,
+      "error": null,
+      "formula": "sell: IRR_per_CAD = USD_sell / CAD_per_USD ; buy: IRR_per_CAD = USD_buy / CAD_per_USD",
+      "inputs": [
+        {
+          "kind": "exact",
+          "leg": "sell",
+          "source_id": "bonbast_archive",
+          "unit": "rial",
+          "value": 2634000,
+          "verify_url": "https://bonbast.com/graph/usd"
+        },
+        {
+          "kind": "exact",
+          "leg": "buy",
+          "source_id": "bonbast_archive",
+          "unit": "rial",
+          "value": 2632000,
+          "verify_url": "https://bonbast.com/graph/usd"
+        },
+        {
+          "kind": "exact",
+          "source_id": "globalfx",
+          "unit": "ratio",
+          "value": 1.414714,
+          "verify_url": "https://open.er-api.com/v6/latest/USD"
+        }
+      ],
+      "kind": "estimate",
+      "native": {},
+      "pair_from": "CAD",
+      "pair_to": "IRR",
+      "price_rial": null,
+      "raw": {},
+      "sell_rial": 1861860,
+      "single_sided": false,
+      "source_id": "cad_estimate",
+      "source_url": "",
+      "status": "ok",
+      "value": null,
+      "verify_url": ""
+    }
+  ]
+}
