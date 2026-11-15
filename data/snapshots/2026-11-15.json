@@ -1,6 +1,6 @@
 {
   "date": "2026-11-15",
-  "generated_at": "2026-11-15T18:24:48+03:30",
+  "generated_at": "2026-11-15T23:23:25+03:30",
   "records": [
     {
       "as_of": "2026-11-15",
@@ -9,14 +9,14 @@
       "kind": "exact",
       "native": {
         "unit": "toman",
-        "value": 265710
+        "value": 265805
       },
       "pair_from": "USD",
       "pair_to": "IRR",
-      "price_rial": 2657100,
+      "price_rial": 2658050,
       "raw": {
         "key": "dollar",
-        "value": 265710
+        "value": 265805
       },
       "sell_rial": null,
       "single_sided": true,
@@ -33,14 +33,14 @@
       "kind": "exact",
       "native": {
         "unit": "toman",
-        "value": 186330
+        "value": 186380
       },
       "pair_from": "CAD",
       "pair_to": "IRR",
-      "price_rial": 1863300,
+      "price_rial": 1863800,
       "raw": {
         "key": "cad",
-        "value": 186330
+        "value": 186380
       },
       "sell_rial": null,
       "single_sided": true,
@@ -120,32 +120,32 @@
     },
     {
       "as_of": "",
-      "buy_rial": 2684100,
+      "buy_rial": 2695500,
       "error": null,
       "kind": "proxy",
       "native": {
-        "buy": "2684100",
-        "sell": "2684500",
+        "buy": "2695500",
+        "sell": "2695540",
         "unit": "rial"
       },
       "pair_from": "USDT",
       "pair_to": "IRR",
       "price_rial": null,
       "raw": {
-        "bestBuy": "2684100",
-        "bestSell": "2684500",
-        "dayChange": "-1.09",
-        "dayClose": "2684500",
+        "bestBuy": "2695500",
+        "bestSell": "2695540",
+        "dayChange": "-0.59",
+        "dayClose": "2695540",
         "dayHigh": "2720000",
         "dayLow": "2675000",
-        "dayOpen": "2714000",
+        "dayOpen": "2711420",
         "isClosed": false,
-        "latest": "2684500",
-        "mark": "2684400",
-        "volumeDst": "6890168871428.092041509",
-        "volumeSrc": "2554603.1042651154"
+        "latest": "2695540",
+        "mark": "2695960",
+        "volumeDst": "6640092446094.541170775",
+        "volumeSrc": "2466538.6218013435"
       },
-      "sell_rial": 2684500,
+      "sell_rial": 2695540,
       "single_sided": false,
       "source_id": "nobitex",
       "source_url": "https://apiv2.nobitex.ir/market/stats?srcCurrency=usdt&dstCurrency=rls",
@@ -173,41 +173,41 @@
     },
     {
       "as_of": "",
-      "buy_rial": 2680170,
+      "buy_rial": 2694280,
       "error": null,
       "kind": "proxy",
       "native": {
-        "buy": "268017.0000000000000000",
-        "sell": "268028.0000000000000000",
+        "buy": "269428.0000000000000000",
+        "sell": "269527.0000000000000000",
         "unit": "toman"
       },
       "pair_from": "USDT",
       "pair_to": "IRR",
       "price_rial": null,
       "raw": {
-        "24h_ch": -0.42,
-        "24h_highPrice": "271263.0000000000000000",
+        "24h_ch": -0.39,
+        "24h_highPrice": "270855.0000000000000000",
         "24h_lowPrice": "267100.0000000000000000",
-        "24h_quoteVolume": "168508603928.5188118200000000",
-        "24h_tmnVolume": "168508603928.5188118200000000",
-        "24h_volume": "625221.5009176700000000",
-        "7d_ch": 0.74,
-        "7d_volume": "5343916.8401557000000000",
+        "24h_quoteVolume": "144943427200.7237669100000000",
+        "24h_tmnVolume": "144943427200.7237669100000000",
+        "24h_volume": "539093.1275700000000000",
+        "7d_ch": 1.29,
+        "7d_volume": "5364317.2456444500000000",
         "askCount": 50,
-        "askPrice": "268028.0000000000000000",
-        "askVolume": "18468.93546018",
+        "askPrice": "269527.0000000000000000",
+        "askVolume": "19757.60293853",
         "bidCount": 50,
-        "bidPrice": "268017.0000000000000000",
-        "bidVolume": "21186.35581501",
+        "bidPrice": "269428.0000000000000000",
+        "bidVolume": "10363.87",
         "direction": {
-          "BUY": 67,
-          "SELL": 33
+          "BUY": 24,
+          "SELL": 76
         },
-        "lastPrice": "268017.0000000000000000",
-        "lastQty": "268017.0000000000000000",
+        "lastPrice": "269527.0000000000000000",
+        "lastQty": "269527.0000000000000000",
         "lastTradeSide": "BUY"
       },
-      "sell_rial": 2680280,
+      "sell_rial": 2695270,
       "single_sided": false,
       "source_id": "wallex",
       "source_url": "https://api.wallex.ir/v1/markets",
@@ -217,12 +217,12 @@
     },
     {
       "as_of": "",
-      "buy_rial": 2681500,
+      "buy_rial": 2690530,
       "error": null,
       "kind": "proxy",
       "native": {
-        "buy": "268150.0000000000000000",
-        "sell": "268180.0000000000000000",
+        "buy": "269053.0000000000000000",
+        "sell": "269290.0000000000000000",
         "unit": "toman"
       },
       "pair_from": "USDT",
@@ -230,15 +230,15 @@
       "price_rial": null,
       "raw": {
         "best_ask": [
-          "268180.0000000000000000",
-          "189.74395900"
+          "269290.0000000000000000",
+          "6043.14490100"
         ],
         "best_bid": [
-          "268150.0000000000000000",
-          "13.05043800"
+          "269053.0000000000000000",
+          "111.48548700"
         ]
       },
-      "sell_rial": 2681800,
+      "sell_rial": 2692900,
       "single_sided": false,
       "source_id": "tabdeal",
       "source_url": "https://api.tabdeal.org/r/api/v1/depth/?symbol=USDTIRT",
@@ -317,14 +317,14 @@
       "verify_url": "https://www.bankofcanada.ca/rates/exchange/daily-exchange-rates/"
     },
     {
-      "as_of": "2026-11-15T09:45:00-05:00",
+      "as_of": "2026-11-15T14:45:00-05:00",
       "buy_rial": null,
       "error": null,
       "kind": "exact",
       "native": {
-        "cad_buy": 1.3851,
-        "cad_mid": 1.4249,
-        "cad_sell": 1.4647,
+        "cad_buy": 1.3864,
+        "cad_mid": 1.4258000000000002,
+        "cad_sell": 1.4652,
         "rate_type": "non-cash",
         "tier_max_usd": 999.99,
         "unit": "CAD per USD"
@@ -337,18 +337,18 @@
           "CNO": false,
           "currencyCode": "USD",
           "currencyName": "US DOLLAR",
-          "currencyRatePay": "1.4647",
-          "currencyRateRec": "1.3851",
+          "currencyRatePay": "1.4652",
+          "currencyRateRec": "1.3864",
           "currencyTier": "999.99"
         },
-        "timestamp": "Sun Nov 15 2026 9:45 AM Eastern Standard Time"
+        "timestamp": "Sun Nov 15 2026 2:45 PM Eastern Standard Time"
       },
       "sell_rial": null,
       "single_sided": false,
       "source_id": "td",
       "source_url": "https://ix0.apps.td.com/api/fxcal/non-cash-gfx-rates/en",
       "status": "ok",
-      "value": 0.7018036353428311,
+      "value": 0.7013606396409032,
       "verify_url": "https://www.td.com/ca/en/personal-banking/solutions/exchange/currency-converter"
     },
     {
