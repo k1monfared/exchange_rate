@@ -108,6 +108,7 @@ table.grid th:nth-child(2), table.grid td:nth-child(2) { text-align: left; }
 [data-theme="light"] .asof-eq { color: #1a7f37; }
 [data-theme="light"] .asof-lt { color: #8a5a00; }
 [data-theme="light"] .asof-gt { color: #0b5fa5; }
+.sub-table-title { font-size: 1rem; margin: 1.4rem 0 .2rem; }
 .json-icon { color: var(--text-muted); text-decoration: none; margin-right: .35rem; font-family: var(--font-mono); font-weight: 700; }
 .json-icon:hover { color: var(--link); }
 

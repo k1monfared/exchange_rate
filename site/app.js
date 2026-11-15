@@ -179,10 +179,34 @@ function averageLeg(cur, side) {
   return vals.reduce((a, b) => a + b, 0) / vals.length
 }
 
+// CAD per 1 USD for a USD/CAD record on the chosen side. Bank quotes carry
+// native.cad_buy/cad_sell/cad_mid; a missing side falls back to the mid, the
+// same way IRR records fall back to price_rial. Legacy globalfx has only value.
+function cadPerUsd(rec, side) {
+  if (!rec || rec.pair_from !== "USD" || rec.pair_to !== "CAD") return null
+  const n = rec.native || {}
+  const mid = n.cad_mid != null ? n.cad_mid
+    : (n.cad_buy != null && n.cad_sell != null) ? (n.cad_buy + n.cad_sell) / 2
+    : (rec.value ? 1 / rec.value : null)
+  if (side === "buy" && n.cad_buy != null) return n.cad_buy
+  if (side === "sell" && n.cad_sell != null) return n.cad_sell
+  return mid
+}
+
+function usdCadRecord(sourceId) {
+  return records().find(r => r.source_id === sourceId && r.pair_from === "USD" && r.pair_to === "CAD")
+}
+
+// official reference for USD/CAD: Bank of Canada, else the global aggregator
+function refUsdCadRecord() {
+  return usdCadRecord("boc") || usdCadRecord("globalfx")
+}
+
 function directPair(from, to, sourceId, side) {
-  const rec = records().find(r => r.source_id === sourceId && r.pair_from === from && r.pair_to === to)
-  if (rec && rec.pair_to !== "IRR" && rec.value) return 1 / rec.value
-  return null
+  if (!((from === "USD" && to === "CAD") || (from === "CAD" && to === "USD"))) return null
+  const v = cadPerUsd(usdCadRecord(sourceId), side)
+  if (v == null) return null
+  return from === "USD" ? v : 1 / v
 }
 
 function rate(from, to, sourceId, side) {
@@ -190,20 +214,19 @@ function rate(from, to, sourceId, side) {
 
   if (sourceId === "estimate") {
     const cadRec = records().find(x => x.source_id === "cad_estimate")
-    const gfxRec = records().find(x => x.source_id === "globalfx")
     const cadIrr = sideValue(cadRec, side)
     const usdIrr = averageLeg("USD", side)
-    const gfx = gfxRec ? gfxRec.value : null
+    const ref = cadPerUsd(refUsdCadRecord(), side)
     if (from === "CAD" && to === "IRR") return cadIrr
     if (from === "IRR" && to === "CAD") return cadIrr != null ? 1 / cadIrr : null
     if (from === "USD" && to === "IRR") return usdIrr
     if (from === "IRR" && to === "USD") return usdIrr != null ? 1 / usdIrr : null
     if (from === "USD" && to === "CAD") {
-      if (gfx != null) return 1 / gfx
+      if (ref != null) return ref
       return (cadIrr != null && usdIrr != null) ? usdIrr / cadIrr : null
     }
     if (from === "CAD" && to === "USD") {
-      if (gfx != null) return gfx
+      if (ref != null) return 1 / ref
       return (cadIrr != null && usdIrr != null) ? cadIrr / usdIrr : null
     }
     return null
@@ -224,10 +247,21 @@ function rate(from, to, sourceId, side) {
   return a / b
 }
 
+// sources that only quote USD/CAD (no rial leg): kept out of the IRR toggles,
+// chart and table, and shown in their own USD/CAD table instead
+function usdCadOnlyIds() {
+  const ids = new Set(["globalfx"])
+  for (const s of (INDEX && INDEX.sources ? INDEX.sources : [])) {
+    if (s.pair === "USD/CAD") ids.add(s.source_id)
+  }
+  return ids
+}
+
 function allSourceIds() {
   const h = (HISTORY && HISTORY.sources) ? historySourceIds() : []
   const idx = (INDEX && INDEX.sources ? INDEX.sources : []).map(s => s.source_id)
-  return [...new Set([...h, ...idx])].filter(id => id !== "globalfx")
+  const fxOnly = usdCadOnlyIds()
+  return [...new Set([...h, ...idx])].filter(id => !fxOnly.has(id))
 }
 
 function checkedValues(hostId, allValues) {
@@ -279,7 +313,7 @@ function availability(sourceId) {
     return s
   }
   if (sourceId === "estimate") {
-    for (const id of ["cad_estimate", "globalfx"]) {
+    for (const id of ["cad_estimate", "globalfx", "boc"]) {
       for (const d of historyAvail(id)) s.add(d)
       for (const d of snapshotAvail(id)) s.add(d)
     }
@@ -329,9 +363,19 @@ async function loadDay(date) {
       const p = series.points[date]
       if (!p) continue
       if (series.pair_to !== "IRR") {
-        if (series.source_id === "globalfx" && !seen.has("globalfx|USD")) {
-          recs.push({ source_id: "globalfx", kind: "exact", pair_from: "USD", pair_to: "CAD", value: 1 / p[2], as_of: date, verify_url: series.verify_url, status: "ok", raw: {} })
-          seen.add("globalfx|USD")
+        const key = series.source_id + "|" + series.pair_from
+        if (series.pair_to === "CAD" && series.pair_from === "USD" && !seen.has(key)) {
+          // history point = [buy, sell, mid] in CAD per USD
+          const mid = p[2] != null ? p[2] : (p[0] != null && p[1] != null ? (p[0] + p[1]) / 2 : null)
+          if (mid) {
+            recs.push({
+              source_id: series.source_id, kind: series.kind, pair_from: "USD", pair_to: "CAD",
+              value: 1 / mid, native: { cad_buy: p[0], cad_sell: p[1], cad_mid: mid },
+              single_sided: p[0] == null || p[1] == null,
+              as_of: date, verify_url: series.verify_url, source_url: "", status: "ok", raw: {},
+            })
+            seen.add(key)
+          }
         }
         continue
       }
@@ -488,7 +532,7 @@ function provLine(r) {
 
 function estimateBacking(from, to) {
   if ((from === "USD" && to === "CAD") || (from === "CAD" && to === "USD")) {
-    return records().find(r => r.source_id === "globalfx")
+    return refUsdCadRecord()
   }
   if (from === "CAD" || to === "CAD") {
     return records().find(r => r.source_id === "cad_estimate")
@@ -548,7 +592,9 @@ function convert() {
   let result = amt * r
   if (to === "IRR") result = result / UNIT_DIVISOR
   const unitLabel = to === "IRR" ? (UNIT_DIVISOR === UNIT.toman ? " toman" : " rial") : ""
-  out.innerHTML = `${amount} ${from} = ${result.toLocaleString(undefined, { maximumFractionDigits: 2 })} ${to}${unitLabel} <span class="asof-inline">as of ${esc(fmtDate(CURRENT_DATE))}</span>`
+  // USD<->CAD quotes carry 4 decimals; keep them so bank spreads stay visible
+  const digits = (from !== "IRR" && to !== "IRR") ? 4 : 2
+  out.innerHTML = `${amount} ${from} = ${result.toLocaleString(undefined, { maximumFractionDigits: digits })} ${to}${unitLabel} <span class="asof-inline">as of ${esc(fmtDate(CURRENT_DATE))}</span>`
   prov.innerHTML = convertProvenance(from, to, sourceId)
 }
 
@@ -1092,6 +1138,46 @@ function tableCell(r, c, sides) {
   return "<td></td>"
 }
 
+function cadNum(v) {
+  return v == null ? "-" : Number(v).toLocaleString(undefined, { minimumFractionDigits: 4, maximumFractionDigits: 4 })
+}
+
+// USD/CAD quotes from Canadian banks and references, in CAD per 1 USD.
+// Not affected by the source toggles, which only govern rial sources.
+function usdCadTableHtml(sides) {
+  const order = ["boc", "td", "tangerine", "globalfx"]
+  const rows = DAY.filter(r => r.pair_from === "USD" && r.pair_to === "CAD" && r.status !== "error")
+    .sort((a, b) => {
+      const ia = order.indexOf(a.source_id), ib = order.indexOf(b.source_id)
+      return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib)
+    })
+  if (!rows.length) return ""
+  const dim = s => (sides.includes(s) ? "" : ' class="dim"')
+  const cols = [
+    { label: "source", w: "26%" }, { label: "kind", w: "12%" },
+    { label: "buy", w: "13%", side: "buy" }, { label: "sell", w: "13%", side: "sell" },
+    { label: "mid", w: "13%", side: "mid" }, { label: "as-of", w: "23%" },
+  ]
+  const colgroup = `<colgroup>${cols.map(c => `<col style="width:${c.w}">`).join("")}</colgroup>`
+  const head = `<tr>${cols.map(c => `<th${c.side ? dim(c.side) : ""}>${c.label}</th>`).join("")}</tr>`
+  const body = rows.map(r => {
+    const n = r.native || {}
+    const name = esc(r.source_id)
+    const label = r.verify_url ? `<a href="${esc(r.verify_url)}" target="_blank" rel="noopener">${name}</a>` : name
+    const icon = r.source_url ? `<a class="json-icon" href="${esc(r.source_url)}" target="_blank" rel="noopener" title="source JSON">{}</a>` : ""
+    const mm = /(\d{4}-\d{2}-\d{2})/.exec(r.as_of || CURRENT_DATE)
+    const ds = mm ? mm[1] : CURRENT_DATE
+    const t = todayIso()
+    const ac = ds === t ? "asof-eq" : (ds < t ? "asof-lt" : "asof-gt")
+    return `<tr><td>${icon}${label}</td><td>${badge(r)}</td>` +
+      `<td${dim("buy")}>${cadNum(n.cad_buy)}</td><td${dim("sell")}>${cadNum(n.cad_sell)}</td>` +
+      `<td${dim("mid")}>${cadNum(cadPerUsd(r, "mid"))}</td><td class="${ac}">${esc(fmtDate(ds))}</td></tr>`
+  }).join("")
+  return `<h3 class="sub-table-title">USD/CAD: CAD per 1 USD</h3>` +
+    `<p class="asof">buy = what the bank pays you for 1 USD, sell = what it charges you</p>` +
+    `<table class="grid">${colgroup}<thead>${head}</thead><tbody>${body}</tbody></table>`
+}
+
 function renderTables() {
   const body = document.getElementById("tables-body")
   if (!DAY.length) { body.innerHTML = `<p class="no-data">no data for this date</p>`; return }
@@ -1116,7 +1202,7 @@ function renderTables() {
   const title = document.getElementById("tables-title")
   if (title) title.textContent = `Sources: rates to IRR, in ${unitName()}`
   const header = `<p class="asof">date ${esc(fmtDate(CURRENT_DATE))} &middot; latest as-of ${esc(fmtDate(asof))}</p>`
-  body.innerHTML = header + `<table class="grid">${colgroup}<thead>${head}</thead><tbody>${rowHtml}</tbody></table>`
+  body.innerHTML = header + `<table class="grid">${colgroup}<thead>${head}</thead><tbody>${rowHtml}</tbody></table>` + usdCadTableHtml(sides)
   body.querySelectorAll(".badge.estimate").forEach(el => {
     el.addEventListener("click", () => showProvenance(JSON.parse(el.dataset.prov)))
   })

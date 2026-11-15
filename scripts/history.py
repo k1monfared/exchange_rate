@@ -55,9 +55,32 @@ def merge_series(dst: dict, src: dict) -> None:
         d["points"].update(s.get("points", {}))
 
 
+def _usd_cad_point(d: dict):
+    """[buy, sell, mid] in CAD per USD for bank quotes; None for anything else.
+
+    Only records carrying ``cad_*`` fields qualify, so legacy ``globalfx``
+    (whose history comes from the Frankfurter archive) is left alone.
+    """
+    if d.get("status", "ok") != "ok":
+        return None
+    n = d.get("native") or {}
+    buy, sell, mid = n.get("cad_buy"), n.get("cad_sell"), n.get("cad_mid")
+    if buy is None and sell is None and mid is None:
+        return None
+    if buy is not None and sell is not None:
+        return [buy, sell, None]
+    return [buy, sell, mid]
+
+
 def add_records(history: dict, date: str, records: list) -> None:
     for r in records:
         d = r.to_dict() if hasattr(r, "to_dict") else r
+        if d.get("pair_to") == "CAD" and d.get("pair_from") == "USD":
+            pt = _usd_cad_point(d)
+            if pt is not None:
+                add_point(history, d["source_id"], "USD", "CAD", d["kind"],
+                          d.get("verify_url", ""), date, *pt)
+            continue
         if d.get("pair_to") != "IRR":
             continue
         add_point(history, d["source_id"], d["pair_from"], "IRR", d["kind"],
@@ -97,8 +120,21 @@ def wallex_series(payload: dict) -> dict:
     return out
 
 
+BOC_VERIFY_URL = "https://www.bankofcanada.ca/rates/exchange/daily-exchange-rates/"
+
+
+def boc_series(payload: dict) -> dict:
+    out = {}
+    for o in payload.get("observations", []):
+        v = (o.get("FXUSDCAD") or {}).get("v")
+        if v:
+            out[iso(o["d"])] = float(v)  # CAD per 1 USD
+    return out
+
+
 def build_from_archive(bonbast_payload: dict, frankfurter_payload: dict,
-                       wallex_payload: dict | None, generated_at: str) -> dict:
+                       wallex_payload: dict | None, generated_at: str,
+                       boc_payload: dict | None = None) -> dict:
     h = {"version": HISTORY_VERSION, "generated_at": generated_at, "sources": {}}
     bb = bonbast_series(bonbast_payload)
     for pair in ("USD", "CAD"):
@@ -125,6 +161,10 @@ def build_from_archive(bonbast_payload: dict, frankfurter_payload: dict,
         for date, price in wallex_series(wallex_payload).items():
             add_point(h, "wallex", "USDT", "IRR", "proxy",
                       "https://wallex.ir/", date, None, None, price)
+    if boc_payload:
+        for date, cad_per_usd in boc_series(boc_payload).items():
+            add_point(h, "boc", "USD", "CAD", "exact", BOC_VERIFY_URL,
+                      date, None, None, cad_per_usd)
     return h
 
 

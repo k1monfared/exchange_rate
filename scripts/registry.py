@@ -3,8 +3,8 @@ from __future__ import annotations
 import json
 
 from sources.base import Source
-from sources import bitpin, bonbast_archive, globalfx, nerkhsanj, nobitex
-from sources import ramzinex, tabdeal, tetherland, wallex
+from sources import bitpin, boc, bonbast_archive, globalfx, nerkhsanj, nobitex
+from sources import ramzinex, tabdeal, tangerine, td, tetherland, wallex
 
 _ADAPTERS = {
     "nerkhsanj": nerkhsanj.Nerkhsanj,
@@ -16,6 +16,9 @@ _ADAPTERS = {
     "tabdeal": tabdeal.Tabdeal,
     "bitpin": bitpin.Bitpin,
     "globalfx": globalfx.GlobalFx,
+    "boc": boc.BankOfCanada,
+    "td": td.TD,
+    "tangerine": tangerine.Tangerine,
 }
 
 

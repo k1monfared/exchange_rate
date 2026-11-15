@@ -1,6 +1,6 @@
 # exchange_rate
 
-Daily Iran **free-market** exchange rates for **USD/IRR** and **CAD/IRR**, with the implied **USD/CAD**. Static site, no server, updated once a day by GitHub Actions.
+Daily Iran **free-market** exchange rates for **USD/IRR** and **CAD/IRR**, plus **USD/CAD** from Canadian banks (Bank of Canada, TD, Tangerine). Static site, no server, updated once a day by GitHub Actions.
 
 Live site: https://k1monfared.com/exchange_rate/
 
@@ -25,8 +25,21 @@ The site is served at the account's custom GitHub Pages domain. The `k1monfared.
 | tabdeal | USDT | proxy | tabdeal.org |
 | bitpin | USDT | proxy | bitpin.ir |
 | globalfx | USD/CAD | exact | open.er-api.com |
+| boc | USD/CAD | exact | bankofcanada.ca (official daily average) |
+| td | USD/CAD | exact | td.com currency converter (non-cash, smallest tier) |
+| tangerine | USD/CAD | exact | tangerine.ca/en/rates/exchange-rates |
 
 Sources are always shown separately. Nothing merges them.
+
+### USD/CAD from Canadian banks
+
+All three are stored as CAD per 1 USD in each record's `native` (`cad_buy`, `cad_sell`, `cad_mid`), and `value` is USD per CAD, the same convention as `globalfx`. Sides follow the rest of the project: **buy** is what the bank pays you for 1 USD, **sell** is what it charges you.
+
+- **boc**: [Bank of Canada Valet API](https://www.bankofcanada.ca/valet/docs), series `FXUSDCAD`. One official rate per business day, published the next day, so it lags about a day. This is the reference the converter uses for USD/CAD in "estimate" mode, falling back to `globalfx`.
+- **td**: the JSON behind TD's public currency converter (`ix0.apps.td.com/api/fxcal/non-cash-gfx-rates/en`). Non-cash rates (transfers between accounts), smallest amount tier (under US$1,000). Larger amounts get slightly better rates.
+- **tangerine**: the JSON Tangerine's rates page loads (`currentRates.json`). Tangerine labels sides from the customer's view, so they are swapped on ingest.
+
+The TD and Tangerine feeds are undocumented endpoints behind public pages, so they can change without notice. A parse that fails or returns an implausible rate (outside 0.8 to 2.5 CAD per USD, or buy above sell) is stored as an error for that day and never as a value. RBC was considered and left out: its calculator needs a session token behind bot protection, too fragile for an unattended job.
 
 ## Data
 
@@ -37,6 +50,10 @@ One JSON snapshot per day in `data/snapshots/`, plus `data/index.json`. Canonica
 - `bonbast_archive` (USD and CAD buy/sell), 2012 onward
 - `cad_estimate` (CAD/IRR, derived from bonbast USD and the global USD/CAD), 2012 onward
 - `wallex` USDT (price), for the window its API retains
+- `boc` USD/CAD (CAD per USD, single rate), 2017 onward
+- `td`, `tangerine` USD/CAD buy/sell, from the day they were added (these banks publish no history)
+
+USD/CAD series have `pair_to: "CAD"` and points `[buy, sell, mid]` in CAD per USD. The chart only plots rial series.
 
 ## Backfill and archive
 
@@ -44,7 +61,7 @@ One JSON snapshot per day in `data/snapshots/`, plus `data/index.json`. Canonica
 # write per-day snapshots for the last 7 days the archive covers, and refresh history.json
 python -m scripts.fetch --backfill 7 --now "$(TZ=Asia/Tehran date -Iseconds)"
 
-# build the full history.json from the bonbast and frankfurter archives
+# build the full history.json from the bonbast, frankfurter and Bank of Canada archives
 python -m scripts.fetch --archive --now "$(TZ=Asia/Tehran date -Iseconds)"
 ```
 

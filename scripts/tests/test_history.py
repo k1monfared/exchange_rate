@@ -40,3 +40,28 @@ def test_add_records_merges_irr_records_only():
     assert "nobitex:USDT" in h["sources"]
     assert h["sources"]["nobitex:USDT"]["points"]["2026-10-14"] == [2600990, 2601040, None]
     assert "globalfx:USD" not in h["sources"]
+
+
+def test_add_records_keeps_usd_cad_bank_quotes():
+    h = hist.load_history("/nonexistent/none.json")
+    recs = [
+        Record(source_id="td", kind="exact", pair_from="USD", pair_to="CAD", value=0.7,
+               native={"cad_buy": 1.3561, "cad_sell": 1.4358, "cad_mid": 1.39595}),
+        Record(source_id="boc", kind="exact", pair_from="USD", pair_to="CAD", value=0.7,
+               single_sided=True, native={"cad_mid": 1.396}),
+        Record(source_id="td", kind="exact", pair_from="USD", pair_to="CAD", status="error"),
+    ]
+    hist.add_records(h, "2026-10-31", recs)
+    td = h["sources"]["td:USD"]
+    assert td["pair_to"] == "CAD"
+    assert td["points"]["2026-10-31"] == [1.3561, 1.4358, None]
+    assert h["sources"]["boc:USD"]["points"]["2026-10-31"] == [None, None, 1.396]
+
+
+def test_build_from_archive_adds_boc_series():
+    boc = {"observations": [{"d": "2026-10-13", "FXUSDCAD": {"v": "1.4010"}},
+                            {"d": "2026-10-14", "FXUSDCAD": {}}]}
+    h = hist.build_from_archive(BONBAST, FRANKFURTER, None, "t", boc)
+    s = h["sources"]["boc:USD"]
+    assert s["pair_to"] == "CAD" and s["kind"] == "exact"
+    assert s["points"] == {"2026-10-13": [None, None, 1.401]}

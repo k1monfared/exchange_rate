@@ -94,6 +94,26 @@ def test_source_whose_url_raises_does_not_abort(tmp_path, monkeypatch):
     assert any(r.source_id == "globalfx" and r.status == "ok" for r in recs)
 
 
+def test_run_stores_bank_usd_cad_in_snapshot_and_history(tmp_path):
+    d = str(tmp_path)
+    reg = {"version": 1, "sources": [
+        {"source_id": "tangerine", "label": "Tangerine", "kind": "exact", "pair_from": "USD",
+         "pair_to": "CAD", "verify_url": "https://www.tangerine.ca/en/rates/exchange-rates"},
+    ]}
+
+    def bank(url):
+        assert "tangerine" in url
+        return {"exchange_rates": [{"date": "10-29-2026", "buy": 1.42, "sell": 1.375,
+                                    "currency": "USD"}]}
+
+    run("2026-10-31", d, reg, bank, "x")
+    snap = json.load(open(os.path.join(d, "snapshots", "2026-10-31.json")))
+    rec = next(r for r in snap["records"] if r["source_id"] == "tangerine")
+    assert rec["native"]["cad_buy"] == 1.375 and rec["native"]["cad_sell"] == 1.42
+    h = json.load(open(os.path.join(d, "history.json")))
+    assert h["sources"]["tangerine:USD"]["points"]["2026-10-31"] == [1.375, 1.42, None]
+
+
 CASH_REGISTRY = {"version": 1, "sources": [
     {"source_id": "bonbast_archive", "label": "Bonbast", "kind": "exact",
      "pair_from": "USD", "pair_to": "IRR", "verify_url": "https://bonbast.com/"},

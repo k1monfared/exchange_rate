@@ -6,13 +6,19 @@ from registry import load_registry, build_sources
 META = os.path.join(os.path.dirname(__file__), "..", "..", "data", "meta.json")
 
 
-def test_registry_lists_all_nine_sources():
+def test_registry_lists_all_sources():
     reg = load_registry(META)
     ids = {s["source_id"] for s in reg["sources"]}
     assert ids == {
         "nerkhsanj", "bonbast_archive", "tetherland", "nobitex",
         "ramzinex", "wallex", "tabdeal", "bitpin", "globalfx",
+        "boc", "td", "tangerine",
     }
+
+
+def test_every_registry_source_has_an_adapter():
+    reg = load_registry(META)
+    assert set(build_sources(reg)) == {s["source_id"] for s in reg["sources"]}
 
 
 def test_every_source_has_verify_url_and_kind():

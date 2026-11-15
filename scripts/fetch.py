@@ -12,6 +12,7 @@ import history as hist
 from derive import cad_estimate
 from model import Record
 from registry import build_sources, load_registry
+from sources.cadfx import usd_cad_record
 from store import rebuild_index, write_snapshot
 from validate import validate_records
 
@@ -21,6 +22,8 @@ SANITY_HIGH = 2.5
 BONBAST_URL = ("https://raw.githubusercontent.com/SamadiPour/"
                "rial-exchange-rates-archive/data/gregorian_all.min.json")
 FRANKFURTER_URL = "https://api.frankfurter.dev/v1/1999-01-01..2100-01-01?base=USD&symbols=CAD"
+BOC_HISTORY_URL = ("https://www.bankofcanada.ca/valet/observations/FXUSDCAD/json"
+                   "?start_date=2017-01-01")
 WALLEX_HISTORY_URL = ("https://api.wallex.ir/v1/udf/history?"
                       "symbol=USDTTMN&resolution=1D&from={frm}&to={to}")
 
@@ -138,7 +141,11 @@ def build_history(fetch_json, days: int = 900) -> dict:
         wallex = fetch_json(_wallex_url(days))
     except Exception:
         wallex = None
-    return hist.build_from_archive(bonbast, frankfurter, wallex, "")
+    try:
+        boc = fetch_json(BOC_HISTORY_URL)
+    except Exception:
+        boc = None
+    return hist.build_from_archive(bonbast, frankfurter, wallex, "", boc)
 
 
 def backfill(days: int, data_dir: str, registry: dict, fetch_json, now: str) -> list[str]:
@@ -154,6 +161,7 @@ def backfill(days: int, data_dir: str, registry: dict, fetch_json, now: str) -> 
     frankfurter = fetch_json(FRANKFURTER_URL)
     cad_per_usd = hist.frankfurter_series(frankfurter)
     wallex_pts = archive["sources"].get("wallex:USDT", {}).get("points", {})
+    boc_pts = archive["sources"].get("boc:USD", {}).get("points", {})
     written = []
     for date in targets:
         recs: list[Record] = []
@@ -178,6 +186,13 @@ def backfill(days: int, data_dir: str, registry: dict, fetch_json, now: str) -> 
                 source_id="wallex", kind="proxy", pair_from="USDT", pair_to="IRR",
                 price_rial=price, single_sided=True, as_of=date,
                 source_url=_wallex_url(days), verify_url="https://wallex.ir/",
+            ))
+        boc_pt = boc_pts.get(date)
+        if boc_pt and boc_pt[2]:
+            recs.append(usd_cad_record(
+                "boc", mid=boc_pt[2], as_of=date, source_url=BOC_HISTORY_URL,
+                verify_url=hist.BOC_VERIFY_URL, raw={},
+                extra={"rate_type": "official daily average"},
             ))
         validate_records(recs)
         write_snapshot(data_dir, date, recs, now)
